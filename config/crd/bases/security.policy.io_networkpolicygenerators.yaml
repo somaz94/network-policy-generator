@@ -1,0 +1,237 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.4
+  name: networkpolicygenerators.security.policy.io
+spec:
+  group: security.policy.io
+  names:
+    kind: NetworkPolicyGenerator
+    listKind: NetworkPolicyGeneratorList
+    plural: networkpolicygenerators
+    singular: networkpolicygenerator
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: NetworkPolicyGenerator is the Schema for the networkpolicygenerators
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: NetworkPolicyGeneratorSpec defines the desired state of NetworkPolicyGenerator
+            properties:
+              allowedNamespaces:
+                description: AllowedNamespaces lists namespaces that are allowed to
+                  communicate when default policy is deny
+                items:
+                  type: string
+                type: array
+              defaultPolicy:
+                description: DefaultPolicy defines the default network policy configuration
+                properties:
+                  egress:
+                    description: Egress defines the egress-specific policy
+                    properties:
+                      followDefault:
+                        description: FollowDefault indicates whether to follow the
+                          default policy
+                        type: boolean
+                      policy:
+                        description: Policy defines the policy type when not following
+                          default
+                        enum:
+                        - allow
+                        - deny
+                        type: string
+                    type: object
+                  ingress:
+                    description: Ingress defines the ingress-specific policy
+                    properties:
+                      followDefault:
+                        description: FollowDefault indicates whether to follow the
+                          default policy
+                        type: boolean
+                      policy:
+                        description: Policy defines the policy type when not following
+                          default
+                        enum:
+                        - allow
+                        - deny
+                        type: string
+                    type: object
+                  type:
+                    description: Type defines the default policy type (allow/deny)
+                    enum:
+                    - allow
+                    - deny
+                    type: string
+                required:
+                - type
+                type: object
+              deniedNamespaces:
+                description: DeniedNamespaces lists namespaces that are denied to
+                  communicate when default policy is allow
+                items:
+                  type: string
+                type: array
+              duration:
+                description: Duration specifies how long to analyze traffic in learning
+                  mode
+                type: string
+              globalAllowRules:
+                description: GlobalAllowRules defines traffic rules that should be
+                  allowed globally
+                properties:
+                  egress:
+                    description: Egress rules to be applied globally
+                    items:
+                      description: GlobalRule defines a traffic rule
+                      properties:
+                        port:
+                          description: Port number
+                          format: int32
+                          type: integer
+                        protocol:
+                          description: Protocol (TCP/UDP)
+                          type: string
+                      required:
+                      - port
+                      - protocol
+                      type: object
+                    type: array
+                  enabled:
+                    description: Enabled indicates whether this rule set is active
+                    type: boolean
+                  ingress:
+                    description: Ingress rules to be applied globally
+                    items:
+                      description: GlobalRule defines a traffic rule
+                      properties:
+                        port:
+                          description: Port number
+                          format: int32
+                          type: integer
+                        protocol:
+                          description: Protocol (TCP/UDP)
+                          type: string
+                      required:
+                      - port
+                      - protocol
+                      type: object
+                    type: array
+                required:
+                - enabled
+                type: object
+              globalDenyRules:
+                description: GlobalDenyRules defines traffic rules that should be
+                  denied globally
+                properties:
+                  egress:
+                    description: Egress rules to be applied globally
+                    items:
+                      description: GlobalRule defines a traffic rule
+                      properties:
+                        port:
+                          description: Port number
+                          format: int32
+                          type: integer
+                        protocol:
+                          description: Protocol (TCP/UDP)
+                          type: string
+                      required:
+                      - port
+                      - protocol
+                      type: object
+                    type: array
+                  enabled:
+                    description: Enabled indicates whether this rule set is active
+                    type: boolean
+                  ingress:
+                    description: Ingress rules to be applied globally
+                    items:
+                      description: GlobalRule defines a traffic rule
+                      properties:
+                        port:
+                          description: Port number
+                          format: int32
+                          type: integer
+                        protocol:
+                          description: Protocol (TCP/UDP)
+                          type: string
+                      required:
+                      - port
+                      - protocol
+                      type: object
+                    type: array
+                required:
+                - enabled
+                type: object
+              mode:
+                description: 'Mode specifies the operation mode: "learning" or "enforcing"'
+                type: string
+            required:
+            - defaultPolicy
+            type: object
+          status:
+            description: NetworkPolicyGeneratorStatus defines the observed state of
+              NetworkPolicyGenerator
+            properties:
+              lastAnalyzed:
+                description: LastAnalyzed is the timestamp of when traffic was last
+                  analyzed
+                format: date-time
+                type: string
+              observedTraffic:
+                description: ObservedTraffic contains the list of observed traffic
+                  patterns
+                items:
+                  description: TrafficFlow represents a single observed traffic pattern
+                  properties:
+                    destNamespace:
+                      description: Destination namespace and pod information
+                      type: string
+                    destPod:
+                      type: string
+                    port:
+                      format: int32
+                      type: integer
+                    protocol:
+                      description: Protocol and port information
+                      type: string
+                    sourceNamespace:
+                      description: Source namespace and pod information
+                      type: string
+                    sourcePod:
+                      type: string
+                  type: object
+                type: array
+              phase:
+                description: 'Phase represents the current phase of the generator:
+                  Learning, Analyzing, or Enforcing'
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
