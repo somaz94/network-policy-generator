@@ -14,7 +14,17 @@ spec:
     singular: networkpolicygenerator
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.lastAnalyzed
+      name: LastAnalyzed
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: NetworkPolicyGenerator is the Schema for the networkpolicygenerators
@@ -49,37 +59,42 @@ spec:
               defaultPolicy:
                 description: DefaultPolicy defines the default network policy configuration
                 properties:
-                  egress:
-                    description: Egress defines the egress-specific policy
+                  traffic:
+                    description: Traffic defines the traffic-specific policies
                     properties:
-                      followDefault:
-                        description: FollowDefault indicates whether to follow the
-                          default policy
-                        type: boolean
-                      policy:
-                        description: Policy defines the policy type when not following
-                          default
-                        enum:
-                        - allow
-                        - deny
-                        type: string
-                    type: object
-                  ingress:
-                    description: Ingress defines the ingress-specific policy
-                    properties:
-                      followDefault:
-                        description: FollowDefault indicates whether to follow the
-                          default policy
-                        type: boolean
-                      policy:
-                        description: Policy defines the policy type when not following
-                          default
-                        enum:
-                        - allow
-                        - deny
-                        type: string
+                      egress:
+                        description: Egress defines the egress-specific policy
+                        properties:
+                          followDefault:
+                            description: FollowDefault indicates whether to follow
+                              the default policy
+                            type: boolean
+                          policy:
+                            description: Policy defines the policy type when not following
+                              default
+                            enum:
+                            - allow
+                            - deny
+                            type: string
+                        type: object
+                      ingress:
+                        description: Ingress defines the ingress-specific policy
+                        properties:
+                          followDefault:
+                            description: FollowDefault indicates whether to follow
+                              the default policy
+                            type: boolean
+                          policy:
+                            description: Policy defines the policy type when not following
+                              default
+                            enum:
+                            - allow
+                            - deny
+                            type: string
+                        type: object
                     type: object
                   type:
+                    default: deny
                     description: Type defines the default policy type (allow/deny)
                     enum:
                     - allow
@@ -102,43 +117,47 @@ spec:
                 description: GlobalAllowRules defines traffic rules that should be
                   allowed globally
                 properties:
-                  egress:
-                    description: Egress rules to be applied globally
-                    items:
-                      description: GlobalRule defines a traffic rule
-                      properties:
-                        port:
-                          description: Port number
-                          format: int32
-                          type: integer
-                        protocol:
-                          description: Protocol (TCP/UDP)
-                          type: string
-                      required:
-                      - port
-                      - protocol
-                      type: object
-                    type: array
                   enabled:
                     description: Enabled indicates whether this rule set is active
                     type: boolean
-                  ingress:
-                    description: Ingress rules to be applied globally
-                    items:
-                      description: GlobalRule defines a traffic rule
-                      properties:
-                        port:
-                          description: Port number
-                          format: int32
-                          type: integer
-                        protocol:
-                          description: Protocol (TCP/UDP)
-                          type: string
-                      required:
-                      - port
-                      - protocol
-                      type: object
-                    type: array
+                  traffic:
+                    description: Traffic defines the traffic-specific rules
+                    properties:
+                      egress:
+                        description: Egress rules to be applied globally
+                        items:
+                          description: GlobalRule defines a traffic rule
+                          properties:
+                            port:
+                              description: Port number
+                              format: int32
+                              type: integer
+                            protocol:
+                              description: Protocol (TCP/UDP)
+                              type: string
+                          required:
+                          - port
+                          - protocol
+                          type: object
+                        type: array
+                      ingress:
+                        description: Ingress rules to be applied globally
+                        items:
+                          description: GlobalRule defines a traffic rule
+                          properties:
+                            port:
+                              description: Port number
+                              format: int32
+                              type: integer
+                            protocol:
+                              description: Protocol (TCP/UDP)
+                              type: string
+                          required:
+                          - port
+                          - protocol
+                          type: object
+                        type: array
+                    type: object
                 required:
                 - enabled
                 type: object
@@ -146,43 +165,47 @@ spec:
                 description: GlobalDenyRules defines traffic rules that should be
                   denied globally
                 properties:
-                  egress:
-                    description: Egress rules to be applied globally
-                    items:
-                      description: GlobalRule defines a traffic rule
-                      properties:
-                        port:
-                          description: Port number
-                          format: int32
-                          type: integer
-                        protocol:
-                          description: Protocol (TCP/UDP)
-                          type: string
-                      required:
-                      - port
-                      - protocol
-                      type: object
-                    type: array
                   enabled:
                     description: Enabled indicates whether this rule set is active
                     type: boolean
-                  ingress:
-                    description: Ingress rules to be applied globally
-                    items:
-                      description: GlobalRule defines a traffic rule
-                      properties:
-                        port:
-                          description: Port number
-                          format: int32
-                          type: integer
-                        protocol:
-                          description: Protocol (TCP/UDP)
-                          type: string
-                      required:
-                      - port
-                      - protocol
-                      type: object
-                    type: array
+                  traffic:
+                    description: Traffic defines the traffic-specific rules
+                    properties:
+                      egress:
+                        description: Egress rules to be applied globally
+                        items:
+                          description: GlobalRule defines a traffic rule
+                          properties:
+                            port:
+                              description: Port number
+                              format: int32
+                              type: integer
+                            protocol:
+                              description: Protocol (TCP/UDP)
+                              type: string
+                          required:
+                          - port
+                          - protocol
+                          type: object
+                        type: array
+                      ingress:
+                        description: Ingress rules to be applied globally
+                        items:
+                          description: GlobalRule defines a traffic rule
+                          properties:
+                            port:
+                              description: Port number
+                              format: int32
+                              type: integer
+                            protocol:
+                              description: Protocol (TCP/UDP)
+                              type: string
+                          required:
+                          - port
+                          - protocol
+                          type: object
+                        type: array
+                    type: object
                 required:
                 - enabled
                 type: object

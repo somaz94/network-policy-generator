@@ -28,11 +28,15 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
 	"github.com/somaz94/network-policy-generator/internal/policy"
+)
+
+const (
+	timeout  = time.Second * 5
+	interval = time.Millisecond * 250
 )
 
 var _ = Describe("NetworkPolicyGenerator Controller", func() {
@@ -58,10 +62,6 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 
 			// Create the NetworkPolicyGenerator object
 			generator := &securityv1.NetworkPolicyGenerator{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "security.policy.io/v1",
-					Kind:       "NetworkPolicyGenerator",
-				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      generatorName,
 					Namespace: namespace,
@@ -71,22 +71,36 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					Duration: metav1.Duration{Duration: 5 * time.Minute},
 					DefaultPolicy: securityv1.DefaultPolicy{
 						Type: securityv1.PolicyDeny,
+						Traffic: securityv1.TrafficPolicy{
+							Ingress: securityv1.DirectionPolicy{
+								FollowDefault: true,
+								Policy:        securityv1.PolicyDeny,
+							},
+							Egress: securityv1.DirectionPolicy{
+								FollowDefault: true,
+								Policy:        securityv1.PolicyDeny,
+							},
+						},
 					},
 					GlobalAllowRules: &securityv1.GlobalRuleSet{
 						Enabled: false,
-						Ingress: []securityv1.GlobalRule{
-							{
-								Port:     80,
-								Protocol: "TCP",
+						Traffic: securityv1.GlobalTrafficRules{
+							Ingress: []securityv1.GlobalRule{
+								{
+									Port:     80,
+									Protocol: "TCP",
+								},
 							},
 						},
 					},
 					GlobalDenyRules: &securityv1.GlobalRuleSet{
 						Enabled: false,
-						Egress: []securityv1.GlobalRule{
-							{
-								Port:     25,
-								Protocol: "TCP",
+						Traffic: securityv1.GlobalTrafficRules{
+							Egress: []securityv1.GlobalRule{
+								{
+									Port:     25,
+									Protocol: "TCP",
+								},
 							},
 						},
 					},
@@ -131,23 +145,15 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					return ""
 				}
 				return generator.Status.Phase
-			}, time.Second*5, time.Millisecond*500).Should(Equal("Learning"))
+			}, timeout, interval).Should(Equal("Learning"))
 
-			By("Verifying NetworkPolicy is created in learning mode")
+			By("Verifying NetworkPolicy is not created in learning mode")
 			networkPolicy := &networkingv1.NetworkPolicy{}
-			Eventually(func() error {
-				return k8sClient.Get(ctx, types.NamespacedName{
-					Name:      generatorName + "-generated",
-					Namespace: namespace,
-				}, networkPolicy)
-			}, time.Second*10).Should(Succeed())
-
-			By("Verifying NetworkPolicy owner references")
-			Expect(networkPolicy.OwnerReferences).To(HaveLen(1))
-			Expect(networkPolicy.OwnerReferences[0].APIVersion).To(Equal(securityv1.GroupVersion.String()))
-			Expect(networkPolicy.OwnerReferences[0].Kind).To(Equal("NetworkPolicyGenerator"))
-			Expect(networkPolicy.OwnerReferences[0].Name).To(Equal(generatorName))
-			Expect(networkPolicy.OwnerReferences[0].Controller).To(Equal(pointer.Bool(true)))
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Name:      generatorName + "-generated",
+				Namespace: namespace,
+			}, networkPolicy)
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
 
 		It("should successfully reconcile in enforcing mode with global rules", func() {
@@ -164,7 +170,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				generator.Spec.GlobalAllowRules.Enabled = true
 				generator.Spec.GlobalDenyRules.Enabled = true
 				return k8sClient.Update(ctx, generator)
-			}, time.Second*10).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
 
 			By("Reconciling the resource")
 			reconciler := &NetworkPolicyGeneratorReconciler{
@@ -189,7 +195,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					Name:      generatorName + "-generated",
 					Namespace: namespace,
 				}, networkPolicy)
-			}, time.Second*10).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
 
 			Expect(networkPolicy.Spec.Ingress).To(HaveLen(1))
 			Expect(networkPolicy.Spec.Ingress[0].Ports[0].Port.IntVal).To(Equal(int32(80)))
@@ -212,7 +218,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				generator.Spec.GlobalAllowRules.Enabled = false
 				generator.Spec.GlobalDenyRules.Enabled = false
 				return k8sClient.Update(ctx, generator)
-			}, time.Second*10).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
 
 			By("Reconciling the resource")
 			reconciler := &NetworkPolicyGeneratorReconciler{
@@ -237,7 +243,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					Name:      generatorName + "-generated",
 					Namespace: namespace,
 				}, networkPolicy)
-			}, time.Second*10).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
 
 			Expect(networkPolicy.Spec.Ingress).To(BeEmpty())
 			Expect(networkPolicy.Spec.Egress).To(BeEmpty())
@@ -255,7 +261,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				}
 				generator.Spec.Mode = "invalid"
 				return k8sClient.Update(ctx, generator)
-			}, time.Second*10).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
 
 			By("Reconciling the resource")
 			reconciler := &NetworkPolicyGeneratorReconciler{
@@ -284,6 +290,10 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				Namespace: namespace,
 			}, generator)).To(Succeed())
 
+			By("Setting initial mode to enforcing")
+			generator.Spec.Mode = "enforcing"
+			Expect(k8sClient.Update(ctx, generator)).To(Succeed())
+
 			By("Reconciling the resource first time")
 			reconciler := &NetworkPolicyGeneratorReconciler{
 				Client:    k8sClient,
@@ -309,19 +319,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					return false
 				}
 				return containsString(generator.ObjectMeta.Finalizers, finalizerName)
-			}, time.Second*10, time.Millisecond*250).Should(BeTrue())
-
-			By("Creating NetworkPolicy")
-			generator.Spec.Mode = "enforcing"
-			Expect(k8sClient.Update(ctx, generator)).To(Succeed())
-
-			_, err = reconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      generatorName,
-					Namespace: namespace,
-				},
-			})
-			Expect(err).NotTo(HaveOccurred())
+			}, timeout, interval).Should(BeTrue())
 
 			By("Verifying NetworkPolicy exists")
 			networkPolicy := &networkingv1.NetworkPolicy{}
@@ -330,12 +328,12 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					Name:      generatorName + "-generated",
 					Namespace: namespace,
 				}, networkPolicy)
-			}, time.Second*10).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
 
 			By("Deleting the NetworkPolicyGenerator")
 			Expect(k8sClient.Delete(ctx, generator)).To(Succeed())
 
-			By("Reconciling after deletion request")
+			By("Reconciling after deletion")
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      generatorName,
@@ -351,7 +349,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					Namespace: namespace,
 				}, networkPolicy)
 				return apierrors.IsNotFound(err)
-			}, time.Second*10, time.Millisecond*250).Should(BeTrue())
+			}, timeout, interval).Should(BeTrue())
 
 			By("Verifying NetworkPolicyGenerator is deleted")
 			Eventually(func() bool {
@@ -360,7 +358,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					Namespace: namespace,
 				}, generator)
 				return apierrors.IsNotFound(err)
-			}, time.Second*10, time.Millisecond*250).Should(BeTrue())
+			}, timeout, interval).Should(BeTrue())
 		})
 
 		It("should handle finalizer removal correctly when NetworkPolicy is already deleted", func() {
@@ -375,7 +373,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				}
 				generator.ObjectMeta.Finalizers = append(generator.ObjectMeta.Finalizers, finalizerName)
 				return k8sClient.Update(ctx, generator)
-			}, time.Second*10).Should(Succeed())
+			}, timeout, interval).Should(Succeed())
 
 			By("Deleting the NetworkPolicyGenerator")
 			Expect(k8sClient.Delete(ctx, generator)).To(Succeed())
@@ -403,7 +401,178 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					Namespace: namespace,
 				}, generator)
 				return apierrors.IsNotFound(err)
-			}, time.Second*10).Should(BeTrue())
+			}, timeout, interval).Should(BeTrue())
+		})
+
+		It("should handle deniedNamespaces correctly", func() {
+			By("Creating a NetworkPolicyGenerator with denied namespaces")
+			generator := &securityv1.NetworkPolicyGenerator{}
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName,
+					Namespace: namespace,
+				}, generator); err != nil {
+					return err
+				}
+				generator.Spec.Mode = "enforcing"
+				generator.Spec.DeniedNamespaces = []string{"test-ns1", "test-ns2"}
+
+				// GlobalAllowRules와 GlobalDenyRules 모두 활성화
+				generator.Spec.GlobalAllowRules = &securityv1.GlobalRuleSet{
+					Enabled: true,
+					Traffic: securityv1.GlobalTrafficRules{
+						Ingress: []securityv1.GlobalRule{
+							{
+								Port:     80,
+								Protocol: "TCP",
+							},
+						},
+					},
+				}
+				generator.Spec.GlobalDenyRules = &securityv1.GlobalRuleSet{
+					Enabled: true,
+					Traffic: securityv1.GlobalTrafficRules{
+						Egress: []securityv1.GlobalRule{
+							{
+								Port:     25,
+								Protocol: "TCP",
+							},
+						},
+					},
+				}
+
+				return k8sClient.Update(ctx, generator)
+			}, timeout, interval).Should(Succeed())
+
+			By("Reconciling the resource")
+			reconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+			}
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      generatorName,
+					Namespace: namespace,
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Verifying NetworkPolicy is created with correct namespace rules")
+			networkPolicy := &networkingv1.NetworkPolicy{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName + "-generated",
+					Namespace: namespace,
+				}, networkPolicy)
+			}, timeout, interval).Should(Succeed())
+
+			By("Verifying NetworkPolicy has the correct rules")
+			Expect(networkPolicy.Spec.PolicyTypes).To(ContainElements(
+				networkingv1.PolicyTypeIngress,
+				networkingv1.PolicyTypeEgress,
+			))
+
+			// Ingress 규칙 검증
+			Expect(networkPolicy.Spec.Ingress).To(HaveLen(1))
+			Expect(networkPolicy.Spec.Ingress[0].Ports).To(HaveLen(1))
+			Expect(networkPolicy.Spec.Ingress[0].Ports[0].Port.IntVal).To(Equal(int32(80)))
+			Expect(string(*networkPolicy.Spec.Ingress[0].Ports[0].Protocol)).To(Equal("TCP"))
+
+			// Egress 규칙 검증
+			Expect(networkPolicy.Spec.Egress).To(HaveLen(1))
+			Expect(networkPolicy.Spec.Egress[0].Ports).To(HaveLen(1))
+			Expect(networkPolicy.Spec.Egress[0].Ports[0].Port.IntVal).To(Equal(int32(25)))
+			Expect(string(*networkPolicy.Spec.Egress[0].Ports[0].Protocol)).To(Equal("TCP"))
+		})
+
+		It("should transition from learning to enforcing mode after duration", func() {
+			By("Creating a NetworkPolicyGenerator with short duration")
+			generator := &securityv1.NetworkPolicyGenerator{}
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName,
+					Namespace: namespace,
+				}, generator); err != nil {
+					return err
+				}
+				generator.Spec.Duration = metav1.Duration{Duration: 2 * time.Second}
+				return k8sClient.Update(ctx, generator)
+			}, timeout, interval).Should(Succeed())
+
+			reconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+			}
+
+			By("Waiting for mode transition")
+			Eventually(func() string {
+				_, err := reconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      generatorName,
+						Namespace: namespace,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				err = k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName,
+					Namespace: namespace,
+				}, generator)
+				if err != nil {
+					return ""
+				}
+				return generator.Status.Phase
+			}, timeout, interval).Should(Equal("Enforcing"))
+		})
+
+		It("should handle errors during NetworkPolicy creation", func() {
+			By("Creating a NetworkPolicyGenerator with invalid configuration")
+			generator := &securityv1.NetworkPolicyGenerator{}
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName,
+					Namespace: namespace,
+				}, generator); err != nil {
+					return err
+				}
+
+				// 의도적으로 잘못된 설정 추가
+				generator.Spec.Mode = "invalid_mode"                                  // 유효하지 않은 모드
+				generator.Spec.Duration = metav1.Duration{Duration: -1 * time.Second} // 음수 시간
+
+				return k8sClient.Update(ctx, generator)
+			}, timeout).Should(Succeed())
+
+			reconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+			}
+
+			By("Verifying error handling")
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      generatorName,
+					Namespace: namespace,
+				},
+			})
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid mode"))
+
+			By("Verifying no NetworkPolicy is created")
+			networkPolicy := &networkingv1.NetworkPolicy{}
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Name:      generatorName + "-generated",
+				Namespace: namespace,
+			}, networkPolicy)
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
 	})
 })

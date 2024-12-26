@@ -15,6 +15,14 @@ func NewValidator() *Validator {
 	return &Validator{}
 }
 
+// ValidateMode validates the mode of NetworkPolicyGenerator
+func (v *Validator) ValidateMode(mode string) error {
+	if mode != "learning" && mode != "enforcing" {
+		return fmt.Errorf("invalid mode: %s, must be either 'learning' or 'enforcing'", mode)
+	}
+	return nil
+}
+
 // ValidatePolicy checks if the generated NetworkPolicy is valid
 func (v *Validator) ValidatePolicy(policy *networkingv1.NetworkPolicy, generator *securityv1.NetworkPolicyGenerator) error {
 	if policy.Name == "" {

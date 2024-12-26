@@ -111,29 +111,37 @@ var _ = Describe("NetworkPolicyGenerator Integration", func() {
 					Duration: metav1.Duration{Duration: time.Minute},
 					DefaultPolicy: securityv1.DefaultPolicy{
 						Type: securityv1.PolicyDeny,
-						Ingress: securityv1.DirectionPolicy{
-							FollowDefault: true,
-						},
-						Egress: securityv1.DirectionPolicy{
-							FollowDefault: true,
+						Traffic: securityv1.TrafficPolicy{
+							Ingress: securityv1.DirectionPolicy{
+								FollowDefault: true,
+								Policy:        securityv1.PolicyDeny,
+							},
+							Egress: securityv1.DirectionPolicy{
+								FollowDefault: true,
+								Policy:        securityv1.PolicyDeny,
+							},
 						},
 					},
 					AllowedNamespaces: []string{targetNs},
 					GlobalAllowRules: &securityv1.GlobalRuleSet{
 						Enabled: true,
-						Ingress: []securityv1.GlobalRule{
-							{
-								Port:     80,
-								Protocol: "TCP",
+						Traffic: securityv1.GlobalTrafficRules{
+							Ingress: []securityv1.GlobalRule{
+								{
+									Port:     80,
+									Protocol: "TCP",
+								},
 							},
 						},
 					},
 					GlobalDenyRules: &securityv1.GlobalRuleSet{
 						Enabled: true,
-						Egress: []securityv1.GlobalRule{
-							{
-								Port:     25,
-								Protocol: "TCP",
+						Traffic: securityv1.GlobalTrafficRules{
+							Egress: []securityv1.GlobalRule{
+								{
+									Port:     25,
+									Protocol: "TCP",
+								},
 							},
 						},
 					},
@@ -276,6 +284,33 @@ var _ = Describe("NetworkPolicyGenerator Integration", func() {
 			))
 			Expect(networkPolicy.Spec.Ingress).NotTo(BeEmpty())
 			Expect(networkPolicy.Spec.Egress).NotTo(BeEmpty())
+
+			By("Verifying NetworkPolicy rules structure")
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generator.Name + "-generated",
+					Namespace: generator.Namespace,
+				}, &networkPolicy)
+				if err != nil {
+					return false
+				}
+
+				// Verify Ingress rules
+				if len(networkPolicy.Spec.Ingress) != 1 || len(networkPolicy.Spec.Ingress[0].Ports) != 1 {
+					return false
+				}
+				ingressPort := networkPolicy.Spec.Ingress[0].Ports[0]
+				if ingressPort.Port.IntVal != 80 || *ingressPort.Protocol != "TCP" {
+					return false
+				}
+
+				// Verify Egress rules
+				if len(networkPolicy.Spec.Egress) != 1 || len(networkPolicy.Spec.Egress[0].Ports) != 1 {
+					return false
+				}
+				egressPort := networkPolicy.Spec.Egress[0].Ports[0]
+				return egressPort.Port.IntVal == 25 && *egressPort.Protocol == "TCP"
+			}, timeout, interval).Should(BeTrue())
 		})
 	})
 })

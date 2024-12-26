@@ -16,48 +16,45 @@ spec:
   defaultPolicy:
     # 기본적으로 모든 트래픽 허용 또는 차단 (allow/deny)
     type: "deny"
-    
-    # Ingress 정책 (기본 정책을 따르지 않을 경우 개별 설정)
-    ingress:
-      # default를 따를지 여부 (true/false)
-      followDefault: true
-      # followDefault가 false일 경우 사용할 정책 (allow/deny)
-      policy: "deny"
-    
-    # Egress 정책 (기본 정책을 따르지 않을 경우 개별 설정)
-    egress:
-      followDefault: true
-      policy: "deny"
+    traffic:
+      ingress:
+        followDefault: true
+        policy: "deny"
+      egress:
+        followDefault: true
+        policy: "deny"
   
   # 통신이 허용된 네임스페이스 목록
   allowedNamespaces:
     - "test-ns1"
     - "test-ns2"
 
-  # 특정 포트/프로토콜에 대한 글로벌 차단 규칙
+  # 특정 포트/프로토콜에 대한 글로벌 허용 규칙
   globalAllowRules:
     enabled: false
-    ingress:
-      - port: 80
-        protocol: TCP
-      - port: 443
-        protocol: TCP
-    egress:
-      - port: 53
-        protocol: UDP
-      - port: 443
-        protocol: TCP
+    traffic:
+      ingress:
+        - port: 80
+          protocol: TCP
+        - port: 443
+          protocol: TCP
+      egress:
+        - port: 53
+          protocol: UDP
+        - port: 443
+          protocol: TCP
 
-  # # 특정 포트/프로토콜에 대한 글로벌 허용 규칙
+  # 특정 포트/프로토콜에 대한 글로벌 차단 규칙
   # globalDenyRules:
   #   enabled: false
-  #   ingress:
-  #     - port: 22
-  #       protocol: TCP
-  #     - port: 3389
-  #       protocol: TCP
-  #   egress:
-  #     - port: 25
-  #       protocol: TCP
-  #     - port: 1433
-  #       protocol: TCP
+  #   traffic:
+  #     ingress:
+  #       - port: 22
+  #         protocol: TCP
+  #       - port: 3389
+  #         protocol: TCP
+  #     egress:
+  #       - port: 25
+  #         protocol: TCP
+  #       - port: 1433
+  #         protocol: TCP

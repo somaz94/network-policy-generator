@@ -34,6 +34,13 @@ type GlobalRuleSet struct {
 	// Enabled indicates whether this rule set is active
 	Enabled bool `json:"enabled"`
 
+	// Traffic defines the traffic-specific rules
+	// +optional
+	Traffic GlobalTrafficRules `json:"traffic,omitempty"`
+}
+
+// GlobalTrafficRules defines the traffic rules for ingress and egress
+type GlobalTrafficRules struct {
 	// Ingress rules to be applied globally
 	// +optional
 	Ingress []GlobalRule `json:"ingress,omitempty"`
@@ -68,8 +75,17 @@ type DirectionPolicy struct {
 // DefaultPolicy defines the default network policy configuration
 type DefaultPolicy struct {
 	// Type defines the default policy type (allow/deny)
+	// +kubebuilder:default=deny
+	// +kubebuilder:validation:Required
 	Type DefaultPolicyType `json:"type"`
 
+	// Traffic defines the traffic-specific policies
+	// +optional
+	Traffic TrafficPolicy `json:"traffic,omitempty"`
+}
+
+// TrafficPolicy defines the traffic-specific policies
+type TrafficPolicy struct {
 	// Ingress defines the ingress-specific policy
 	// +optional
 	Ingress DirectionPolicy `json:"ingress,omitempty"`
@@ -136,6 +152,9 @@ type TrafficFlow struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+//+kubebuilder:printcolumn:name="LastAnalyzed",type="string",JSONPath=".status.lastAnalyzed"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // NetworkPolicyGenerator is the Schema for the networkpolicygenerators API
 type NetworkPolicyGenerator struct {

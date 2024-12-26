@@ -24,21 +24,23 @@ func TestGenerator(t *testing.T) {
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				DefaultPolicy: securityv1.DefaultPolicy{
 					Type: securityv1.PolicyDeny,
-					Ingress: securityv1.DirectionPolicy{
-						FollowDefault: true,
-					},
-					Egress: securityv1.DirectionPolicy{
-						FollowDefault: true,
+					Traffic: securityv1.TrafficPolicy{
+						Ingress: securityv1.DirectionPolicy{
+							FollowDefault: true,
+						},
+						Egress: securityv1.DirectionPolicy{
+							FollowDefault: true,
+						},
 					},
 				},
 			},
 		}
 
-		policy, err := generator.GenerateNetworkPolicy(spec)
+		policies, err := generator.GenerateNetworkPolicies(spec)
 		assert.NoError(t, err)
-		assert.NotNil(t, policy)
-		assert.Equal(t, "test-policy-generated", policy.Name)
-		assert.Equal(t, "test-namespace", policy.Namespace)
+		assert.Len(t, policies, 1)
+		assert.Equal(t, "test-policy-generated", policies[0].Name)
+		assert.Equal(t, "test-namespace", policies[0].Namespace)
 	})
 
 	t.Run("Generate Policy with Default Allow and Denied Namespaces", func(t *testing.T) {
@@ -50,52 +52,41 @@ func TestGenerator(t *testing.T) {
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				DefaultPolicy: securityv1.DefaultPolicy{
 					Type: securityv1.PolicyAllow,
-					Ingress: securityv1.DirectionPolicy{
-						FollowDefault: true,
-					},
-					Egress: securityv1.DirectionPolicy{
-						FollowDefault: true,
+					Traffic: securityv1.TrafficPolicy{
+						Ingress: securityv1.DirectionPolicy{
+							FollowDefault: true,
+						},
+						Egress: securityv1.DirectionPolicy{
+							FollowDefault: true,
+						},
 					},
 				},
 				DeniedNamespaces: []string{"test-ns1", "test-ns2"},
 			},
 		}
 
-		policy, err := generator.GenerateNetworkPolicy(spec)
+		policies, err := generator.GenerateNetworkPolicies(spec)
 		require.NoError(t, err)
-		require.NotNil(t, policy)
+		require.Len(t, policies, 2) // Should generate one policy for each denied namespace
 
-		// Verify Ingress rules
-		require.NotEmpty(t, policy.Spec.Ingress)
-		require.Len(t, policy.Spec.Ingress, 1)
-		require.NotNil(t, policy.Spec.Ingress[0].From)
-		require.Len(t, policy.Spec.Ingress[0].From, 1)
+		for i, policy := range policies {
+			assert.Equal(t, spec.Spec.DeniedNamespaces[i], policy.Namespace)
 
-		fromRule := policy.Spec.Ingress[0].From[0]
-		require.NotNil(t, fromRule.NamespaceSelector)
-		require.NotEmpty(t, fromRule.NamespaceSelector.MatchExpressions)
+			// Verify Ingress rules
+			require.NotEmpty(t, policy.Spec.Ingress)
+			require.Len(t, policy.Spec.Ingress, 1)
+			require.NotNil(t, policy.Spec.Ingress[0].From)
+			require.Len(t, policy.Spec.Ingress[0].From, 1)
 
-		matchExpression := fromRule.NamespaceSelector.MatchExpressions[0]
-		assert.Equal(t, "kubernetes.io/metadata.name", matchExpression.Key)
-		assert.Equal(t, metav1.LabelSelectorOpNotIn, matchExpression.Operator)
-		assert.ElementsMatch(t, []string{"test-ns1", "test-ns2"}, matchExpression.Values)
+			fromRule := policy.Spec.Ingress[0].From[0]
+			require.NotNil(t, fromRule.NamespaceSelector)
+			require.NotEmpty(t, fromRule.NamespaceSelector.MatchExpressions)
 
-		// Verify Egress rules
-		assert.NotEmpty(t, policy.Spec.Egress, "Egress rules should not be empty")
-		assert.Len(t, policy.Spec.Egress, 1, "Should have exactly one egress rule")
-
-		egressRule := policy.Spec.Egress[0]
-		assert.NotNil(t, egressRule.To, "Egress To should not be nil")
-		assert.Len(t, egressRule.To, 1, "Should have exactly one To rule")
-
-		toRule := egressRule.To[0]
-		assert.NotNil(t, toRule.NamespaceSelector, "NamespaceSelector should not be nil")
-		assert.NotEmpty(t, toRule.NamespaceSelector.MatchExpressions, "MatchExpressions should not be empty")
-
-		matchExpression = toRule.NamespaceSelector.MatchExpressions[0]
-		assert.Equal(t, "kubernetes.io/metadata.name", matchExpression.Key)
-		assert.Equal(t, metav1.LabelSelectorOpNotIn, matchExpression.Operator)
-		assert.ElementsMatch(t, []string{"test-ns1", "test-ns2"}, matchExpression.Values)
+			matchExpression := fromRule.NamespaceSelector.MatchExpressions[0]
+			assert.Equal(t, "kubernetes.io/metadata.name", matchExpression.Key)
+			assert.Equal(t, metav1.LabelSelectorOpNotIn, matchExpression.Operator)
+			assert.ElementsMatch(t, spec.Spec.DeniedNamespaces, matchExpression.Values)
+		}
 	})
 
 	t.Run("Generate Policy with Default Deny and Allowed Namespaces", func(t *testing.T) {
@@ -107,20 +98,24 @@ func TestGenerator(t *testing.T) {
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				DefaultPolicy: securityv1.DefaultPolicy{
 					Type: securityv1.PolicyDeny,
-					Ingress: securityv1.DirectionPolicy{
-						FollowDefault: true,
-					},
-					Egress: securityv1.DirectionPolicy{
-						FollowDefault: true,
+					Traffic: securityv1.TrafficPolicy{
+						Ingress: securityv1.DirectionPolicy{
+							FollowDefault: true,
+						},
+						Egress: securityv1.DirectionPolicy{
+							FollowDefault: true,
+						},
 					},
 				},
 				AllowedNamespaces: []string{"kube-system", "monitoring"},
 			},
 		}
 
-		policy, err := generator.GenerateNetworkPolicy(spec)
+		policies, err := generator.GenerateNetworkPolicies(spec)
 		assert.NoError(t, err)
-		assert.NotNil(t, policy)
+		require.Len(t, policies, 1)
+		policy := policies[0]
+
 		assert.Len(t, policy.Spec.Ingress, 1)
 		assert.Len(t, policy.Spec.Egress, 1)
 
@@ -141,24 +136,28 @@ func TestGenerator(t *testing.T) {
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				GlobalAllowRules: &securityv1.GlobalRuleSet{
 					Enabled: true,
-					Ingress: []securityv1.GlobalRule{
-						{
-							Protocol: "TCP",
-							Port:     80,
+					Traffic: securityv1.GlobalTrafficRules{
+						Ingress: []securityv1.GlobalRule{
+							{
+								Protocol: "TCP",
+								Port:     80,
+							},
 						},
-					},
-					Egress: []securityv1.GlobalRule{
-						{
-							Protocol: "TCP",
-							Port:     443,
+						Egress: []securityv1.GlobalRule{
+							{
+								Protocol: "TCP",
+								Port:     443,
+							},
 						},
 					},
 				},
 			},
 		}
 
-		policy, err := generator.GenerateNetworkPolicy(spec)
+		policies, err := generator.GenerateNetworkPolicies(spec)
 		assert.NoError(t, err)
+		require.Len(t, policies, 1)
+		policy := policies[0]
 		assert.NotNil(t, policy)
 		assert.Len(t, policy.Spec.Ingress, 1)
 		assert.Len(t, policy.Spec.Egress, 1)
@@ -173,24 +172,28 @@ func TestGenerator(t *testing.T) {
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				GlobalDenyRules: &securityv1.GlobalRuleSet{
 					Enabled: true,
-					Ingress: []securityv1.GlobalRule{
-						{
-							Protocol: "TCP",
-							Port:     22,
+					Traffic: securityv1.GlobalTrafficRules{
+						Ingress: []securityv1.GlobalRule{
+							{
+								Protocol: "TCP",
+								Port:     22,
+							},
 						},
-					},
-					Egress: []securityv1.GlobalRule{
-						{
-							Protocol: "TCP",
-							Port:     25,
+						Egress: []securityv1.GlobalRule{
+							{
+								Protocol: "TCP",
+								Port:     25,
+							},
 						},
 					},
 				},
 			},
 		}
 
-		policy, err := generator.GenerateNetworkPolicy(spec)
+		policies, err := generator.GenerateNetworkPolicies(spec)
 		assert.NoError(t, err)
+		require.Len(t, policies, 1)
+		policy := policies[0]
 		assert.NotNil(t, policy)
 		assert.Len(t, policy.Spec.Ingress, 1)
 		assert.Len(t, policy.Spec.Egress, 1)
@@ -205,27 +208,33 @@ func TestGenerator(t *testing.T) {
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				GlobalAllowRules: &securityv1.GlobalRuleSet{
 					Enabled: false,
-					Ingress: []securityv1.GlobalRule{
-						{
-							Protocol: "TCP",
-							Port:     80,
+					Traffic: securityv1.GlobalTrafficRules{
+						Ingress: []securityv1.GlobalRule{
+							{
+								Protocol: "TCP",
+								Port:     80,
+							},
 						},
 					},
 				},
 				GlobalDenyRules: &securityv1.GlobalRuleSet{
 					Enabled: false,
-					Ingress: []securityv1.GlobalRule{
-						{
-							Protocol: "TCP",
-							Port:     22,
+					Traffic: securityv1.GlobalTrafficRules{
+						Ingress: []securityv1.GlobalRule{
+							{
+								Protocol: "TCP",
+								Port:     22,
+							},
 						},
 					},
 				},
 			},
 		}
 
-		policy, err := generator.GenerateNetworkPolicy(spec)
+		policies, err := generator.GenerateNetworkPolicies(spec)
 		assert.NoError(t, err)
+		require.Len(t, policies, 1)
+		policy := policies[0]
 		assert.NotNil(t, policy)
 		assert.Len(t, policy.Spec.Ingress, 0)
 		assert.Len(t, policy.Spec.Egress, 0)

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -47,8 +47,8 @@ const (
 
 func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-
 	generator := &securityv1.NetworkPolicyGenerator{}
+
 	if err := r.Get(ctx, req.NamespacedName, generator); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -56,32 +56,26 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, err
 	}
 
-	// Finalizer 처리
-	if generator.ObjectMeta.DeletionTimestamp.IsZero() {
-		// 오브젝트가 삭제되지 않은 상태
-		if !containsString(generator.ObjectMeta.Finalizers, finalizerName) {
-			// Finalizer 추가
-			generator.ObjectMeta.Finalizers = append(generator.ObjectMeta.Finalizers, finalizerName)
-			if err := r.Update(ctx, generator); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-	} else {
-		// 오브젝트가 삭제 중인 상태
+	// Handle deletion
+	if !generator.ObjectMeta.DeletionTimestamp.IsZero() {
 		if containsString(generator.ObjectMeta.Finalizers, finalizerName) {
-			// 1. 연관된 NetworkPolicy 삭제
-			if err := r.deleteNetworkPolicy(ctx, generator); err != nil {
+			if err := r.deleteNetworkPolicies(ctx, generator); err != nil {
 				return ctrl.Result{}, err
 			}
-
-			// 2. Finalizer 제거
 			generator.ObjectMeta.Finalizers = removeString(generator.ObjectMeta.Finalizers, finalizerName)
-			// 3. 리소스 업데이트 (Finalizer 제거 반영)
 			if err := r.Update(ctx, generator); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 		return ctrl.Result{}, nil
+	}
+
+	// Add finalizer if it doesn't exist
+	if !containsString(generator.ObjectMeta.Finalizers, finalizerName) {
+		generator.ObjectMeta.Finalizers = append(generator.ObjectMeta.Finalizers, finalizerName)
+		if err := r.Update(ctx, generator); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	switch generator.Spec.Mode {
@@ -95,25 +89,48 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 	}
 }
 
-// NetworkPolicy 삭제 함수
-func (r *NetworkPolicyGeneratorReconciler) deleteNetworkPolicy(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) error {
-	networkPolicy := &networkingv1.NetworkPolicy{}
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      generator.Name + "-generated",
-		Namespace: generator.Namespace,
-	}, networkPolicy)
+// deleteNetworkPolicies deletes all NetworkPolicies created by this generator
+func (r *NetworkPolicyGeneratorReconciler) deleteNetworkPolicies(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) error {
+	log := log.FromContext(ctx)
 
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
-		return err
+	// Get list of namespaces to clean up
+	var namespacesToClean []string
+
+	if generator.Spec.DefaultPolicy.Type == securityv1.PolicyAllow {
+		// For allow policy, clean up denied namespaces
+		namespacesToClean = generator.Spec.DeniedNamespaces
+	} else {
+		// For deny policy, clean up the generator's namespace
+		namespacesToClean = []string{generator.Namespace}
 	}
 
-	return r.Delete(ctx, networkPolicy)
+	// Delete NetworkPolicy in each namespace
+	for _, ns := range namespacesToClean {
+		policy := &networkingv1.NetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      generator.Name + "-generated",
+				Namespace: ns,
+			},
+		}
+
+		if err := r.Delete(ctx, policy); err != nil {
+			if !apierrors.IsNotFound(err) {
+				log.Error(err, "failed to delete NetworkPolicy",
+					"namespace", ns,
+					"name", policy.Name)
+				return err
+			}
+		}
+
+		log.Info("Successfully deleted NetworkPolicy",
+			"namespace", ns,
+			"name", policy.Name)
+	}
+
+	return nil
 }
 
-// Finalizer 유틸리티 함수들
+// Helper functions
 func containsString(slice []string, s string) bool {
 	for _, item := range slice {
 		if item == s {
@@ -124,7 +141,7 @@ func containsString(slice []string, s string) bool {
 }
 
 func removeString(slice []string, s string) []string {
-	result := []string{}
+	var result []string
 	for _, item := range slice {
 		if item != s {
 			result = append(result, item)
