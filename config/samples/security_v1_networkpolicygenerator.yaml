@@ -1,22 +1,22 @@
 apiVersion: security.policy.io/v1
 kind: NetworkPolicyGenerator
 metadata:
-  name: test-policy-generator-deny
+  name: test-policy-generator
   labels:
     app.kubernetes.io/name: network-policy-generator
     app.kubernetes.io/managed-by: kustomize
 spec:
   mode: "enforcing"  # learning 또는 enforcing
-  # duration: "1m"     # learning 모드일 때만 사용
+  duration: "1m"     # learning 모드일 때만 사용
   
   policy:
     type: "deny"     # allow 또는 deny
     allowedNamespaces:     # deny 타입일 때 사용
       - "test-ns1"
       - "test-ns2"
-    # deniedNamespaces:      # allow 타입일 때 사용
-    #   - "test-ns3"
-    #   - "test-ns4"
+    deniedNamespaces:      # allow 타입일 때 사용
+      - "test-ns3"
+      - "test-ns4"
     
   globalRules:       # 글로벌 규칙 통합
     - type: "allow"  # allow 또는 deny

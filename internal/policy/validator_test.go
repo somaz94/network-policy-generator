@@ -53,8 +53,11 @@ func TestValidator(t *testing.T) {
 				Namespace: "test-namespace",
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				AllowedNamespaces: []string{"ns1", "ns2"},
-				DeniedNamespaces:  []string{"ns1", "ns3"}, // Overlap with allowed
+				Policy: securityv1.PolicyConfig{
+					Type:              "deny",
+					AllowedNamespaces: []string{"ns1", "ns2"},
+					DeniedNamespaces:  []string{"ns1", "ns3"}, // Overlap with allowed
+				},
 			},
 		}
 

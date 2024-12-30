@@ -6,55 +6,24 @@ metadata:
     app.kubernetes.io/name: network-policy-generator
     app.kubernetes.io/managed-by: kustomize
 spec:
-  # 작동 모드: "learning" 또는 "enforcing"
-  mode: "learning"
+  mode: "enforcing"  # learning 또는 enforcing
+  # duration: "1m"     # learning 모드일 때만 사용
   
-  # 학습 모드에서 트래픽을 분석할 기간
-  duration: "1m"
-  
-  # 기본 정책 설정
-  defaultPolicy:
-    # 기본적으로 모든 트래픽 허용 또는 차단 (allow/deny)
-    type: "allow"
-    traffic:
-      ingress:
-        followDefault: true
-        policy: "deny"
-      egress:
-        followDefault: true
-        policy: "deny"
-  
-  # 통신이 차단된 네임스페이스 목록
-  deniedNamespaces:
-    - "test-ns1"
-    - "test-ns2"
-
-  # 특정 포트/프로토콜에 대한 글로벌 허용 규칙
-  # globalAllowRules:
-  #   enabled: false
-  #   traffic:
-  #     ingress:
-  #       - port: 80
-  #         protocol: TCP
-  #       - port: 443
-  #         protocol: TCP
-  #     egress:
-  #       - port: 53
-  #         protocol: UDP
-  #       - port: 443
-  #         protocol: TCP
-
-  # 특정 포트/프로토콜에 대한 글로벌 차단 규칙
-  globalDenyRules:
-    enabled: false
-    traffic:
-      ingress:
-        - port: 22
-          protocol: TCP
-        - port: 3389
-          protocol: TCP
-      egress:
-        - port: 25
-          protocol: TCP
-        - port: 1433
-          protocol: TCP
+  policy:
+    type: "allow"     # allow 또는 deny
+    # allowedNamespaces:     # deny 타입일 때 사용
+    #   - "test-ns1"
+    #   - "test-ns2"
+    deniedNamespaces:      # allow 타입일 때 사용
+      - "test-ns1"
+      - "test-ns2"
+    
+  globalRules:       # 글로벌 규칙 통합
+    - type: "allow"  # allow 또는 deny
+      port: 80
+      protocol: TCP
+      direction: "ingress"  # ingress 또는 egress
+    - type: "allow"
+      port: 443
+      protocol: TCP
+      direction: "egress"

@@ -50,52 +50,67 @@ spec:
           spec:
             description: NetworkPolicyGeneratorSpec defines the desired state of NetworkPolicyGenerator
             properties:
-              allowedNamespaces:
-                description: AllowedNamespaces lists namespaces that are allowed to
-                  communicate when default policy is deny
+              duration:
+                description: Duration specifies how long to analyze traffic in learning
+                  mode
+                type: string
+              globalRules:
+                description: GlobalRules defines the global traffic rules
                 items:
-                  type: string
+                  description: GlobalRule defines a single traffic rule
+                  properties:
+                    direction:
+                      description: Direction of the traffic (ingress/egress)
+                      enum:
+                      - ingress
+                      - egress
+                      type: string
+                    port:
+                      description: Port number
+                      format: int32
+                      type: integer
+                    protocol:
+                      description: Protocol (TCP/UDP)
+                      enum:
+                      - TCP
+                      - UDP
+                      type: string
+                    type:
+                      description: Type defines whether to allow or deny this rule
+                      enum:
+                      - allow
+                      - deny
+                      type: string
+                  required:
+                  - direction
+                  - port
+                  - protocol
+                  - type
+                  type: object
                 type: array
-              defaultPolicy:
-                description: DefaultPolicy defines the default network policy configuration
+              mode:
+                description: 'Mode specifies the operation mode: "learning" or "enforcing"'
+                enum:
+                - learning
+                - enforcing
+                type: string
+              policy:
+                description: Policy defines the main policy configuration
                 properties:
-                  traffic:
-                    description: Traffic defines the traffic-specific policies
-                    properties:
-                      egress:
-                        description: Egress defines the egress-specific policy
-                        properties:
-                          followDefault:
-                            description: FollowDefault indicates whether to follow
-                              the default policy
-                            type: boolean
-                          policy:
-                            description: Policy defines the policy type when not following
-                              default
-                            enum:
-                            - allow
-                            - deny
-                            type: string
-                        type: object
-                      ingress:
-                        description: Ingress defines the ingress-specific policy
-                        properties:
-                          followDefault:
-                            description: FollowDefault indicates whether to follow
-                              the default policy
-                            type: boolean
-                          policy:
-                            description: Policy defines the policy type when not following
-                              default
-                            enum:
-                            - allow
-                            - deny
-                            type: string
-                        type: object
-                    type: object
+                  allowedNamespaces:
+                    description: AllowedNamespaces lists namespaces that are allowed
+                      when policy type is deny
+                    items:
+                      type: string
+                    type: array
+                  deniedNamespaces:
+                    description: DeniedNamespaces lists namespaces that are denied
+                      when policy type is allow
+                    items:
+                      type: string
+                    type: array
                   type:
-                    default: deny
-                    description: Type defines the default policy type (allow/deny)
+                    description: Type defines the policy type (allow/deny)
                     enum:
                     - allow
                     - deny
@@ -103,117 +118,8 @@ spec:
                 required:
                 - type
                 type: object
-              deniedNamespaces:
-                description: DeniedNamespaces lists namespaces that are denied to
-                  communicate when default policy is allow
-                items:
-                  type: string
-                type: array
-              duration:
-                description: Duration specifies how long to analyze traffic in learning
-                  mode
-                type: string
-              globalAllowRules:
-                description: GlobalAllowRules defines traffic rules that should be
-                  allowed globally
-                properties:
-                  enabled:
-                    description: Enabled indicates whether this rule set is active
-                    type: boolean
-                  traffic:
-                    description: Traffic defines the traffic-specific rules
-                    properties:
-                      egress:
-                        description: Egress rules to be applied globally
-                        items:
-                          description: GlobalRule defines a traffic rule
-                          properties:
-                            port:
-                              description: Port number
-                              format: int32
-                              type: integer
-                            protocol:
-                              description: Protocol (TCP/UDP)
-                              type: string
-                          required:
-                          - port
-                          - protocol
-                          type: object
-                        type: array
-                      ingress:
-                        description: Ingress rules to be applied globally
-                        items:
-                          description: GlobalRule defines a traffic rule
-                          properties:
-                            port:
-                              description: Port number
-                              format: int32
-                              type: integer
-                            protocol:
-                              description: Protocol (TCP/UDP)
-                              type: string
-                          required:
-                          - port
-                          - protocol
-                          type: object
-                        type: array
-                    type: object
-                required:
-                - enabled
-                type: object
-              globalDenyRules:
-                description: GlobalDenyRules defines traffic rules that should be
-                  denied globally
-                properties:
-                  enabled:
-                    description: Enabled indicates whether this rule set is active
-                    type: boolean
-                  traffic:
-                    description: Traffic defines the traffic-specific rules
-                    properties:
-                      egress:
-                        description: Egress rules to be applied globally
-                        items:
-                          description: GlobalRule defines a traffic rule
-                          properties:
-                            port:
-                              description: Port number
-                              format: int32
-                              type: integer
-                            protocol:
-                              description: Protocol (TCP/UDP)
-                              type: string
-                          required:
-                          - port
-                          - protocol
-                          type: object
-                        type: array
-                      ingress:
-                        description: Ingress rules to be applied globally
-                        items:
-                          description: GlobalRule defines a traffic rule
-                          properties:
-                            port:
-                              description: Port number
-                              format: int32
-                              type: integer
-                            protocol:
-                              description: Protocol (TCP/UDP)
-                              type: string
-                          required:
-                          - port
-                          - protocol
-                          type: object
-                        type: array
-                    type: object
-                required:
-                - enabled
-                type: object
-              mode:
-                description: 'Mode specifies the operation mode: "learning" or "enforcing"'
-                type: string
             required:
-            - defaultPolicy
+            - policy
             type: object
           status:
             description: NetworkPolicyGeneratorStatus defines the observed state of

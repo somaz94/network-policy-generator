@@ -1,0 +1,28 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: test-policy-generator-deny
+  namespace: test-ns1
+spec:
+  mode: "enforcing"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "test-ns3"  # test-ns3에서만 접근 가능
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+---
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: test-policy-generator-deny
+  namespace: test-ns2
+spec:
+  mode: "enforcing"
+  policy:
+    type: "deny"
+    allowedNamespaces: []  # 모든 접근 차단
+  globalRules: []  # 글로벌 규칙도 제거

@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,26 +56,12 @@ func (r *NetworkPolicyGeneratorReconciler) handleLearningMode(ctx context.Contex
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// Learning 모드 중에는 LastAnalyzed를 업데이트하지 않음
-	log.Info("Still in Learning mode",
-		"phase", generator.Status.Phase,
-		"lastAnalyzed", generator.Status.LastAnalyzed.Format(time.RFC3339),
-		"elapsed", elapsed.String(),
-		"remaining", (generator.Spec.Duration.Duration - elapsed).String())
-
-	// 남은 학습 시간만큼 대기
-	remainingTime := generator.Spec.Duration.Duration - elapsed
-	return ctrl.Result{RequeueAfter: remainingTime}, nil
+	return ctrl.Result{RequeueAfter: generator.Spec.Duration.Duration - elapsed}, nil
 }
 
 // handleEnforcingMode handles the enforcing mode logic
 func (r *NetworkPolicyGeneratorReconciler) handleEnforcingMode(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-
-	// Log current status
-	log.Info("Operating in Enforcing mode",
-		"phase", generator.Status.Phase,
-		"lastAnalyzed", generator.Status.LastAnalyzed.Format(time.RFC3339))
 
 	// Generate NetworkPolicies using the policy generator
 	policies, err := r.Generator.GenerateNetworkPolicies(generator)
@@ -85,57 +70,10 @@ func (r *NetworkPolicyGeneratorReconciler) handleEnforcingMode(ctx context.Conte
 		return ctrl.Result{}, err
 	}
 
-	// Track existing policies to avoid deletion
-	existingPolicies := make(map[string]bool)
-
 	// Create or update each NetworkPolicy
 	for _, policy := range policies {
-		// Track this policy
-		policyKey := fmt.Sprintf("%s/%s", policy.Namespace, policy.Name)
-		existingPolicies[policyKey] = true
-
-		// 기존 정책 확인
-		existing := &networkingv1.NetworkPolicy{}
-		err = r.Get(ctx, client.ObjectKey{
-			Name:      policy.Name,
-			Namespace: policy.Namespace,
-		}, existing)
-
-		// OwnerReferences 설정
-		policy.OwnerReferences = []metav1.OwnerReference{
-			{
-				APIVersion:         securityv1.GroupVersion.String(),
-				Kind:               "NetworkPolicyGenerator",
-				Name:               generator.Name,
-				UID:                generator.UID,
-				Controller:         pointer.Bool(true),
-				BlockOwnerDeletion: pointer.Bool(true),
-			},
-		}
-
-		if err != nil {
-			if !apierrors.IsNotFound(err) {
-				log.Error(err, "failed to get NetworkPolicy")
-				return ctrl.Result{}, err
-			}
-			// 정책이 없는 경우에만 새로 생성
-			if err := r.Create(ctx, policy); err != nil {
-				log.Error(err, "failed to create NetworkPolicy")
-				return ctrl.Result{}, err
-			}
-			log.Info("Created new NetworkPolicy",
-				"name", policy.Name,
-				"namespace", policy.Namespace)
-		} else {
-			// 기존 정책이 있는 경우 업데이트
-			policy.ResourceVersion = existing.ResourceVersion
-			if err := r.Update(ctx, policy); err != nil {
-				log.Error(err, "failed to update NetworkPolicy")
-				return ctrl.Result{}, err
-			}
-			log.Info("Updated existing NetworkPolicy",
-				"name", policy.Name,
-				"namespace", policy.Namespace)
+		if err := r.applyNetworkPolicy(ctx, generator, policy); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -146,7 +84,34 @@ func (r *NetworkPolicyGeneratorReconciler) handleEnforcingMode(ctx context.Conte
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{
-		RequeueAfter: time.Minute * 5,
-	}, nil
+	return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+}
+
+// applyNetworkPolicy creates or updates a NetworkPolicy
+func (r *NetworkPolicyGeneratorReconciler) applyNetworkPolicy(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, policy *networkingv1.NetworkPolicy) error {
+
+	// Set owner reference
+	policy.OwnerReferences = []metav1.OwnerReference{{
+		APIVersion:         securityv1.GroupVersion.String(),
+		Kind:               "NetworkPolicyGenerator",
+		Name:               generator.Name,
+		UID:                generator.UID,
+		Controller:         pointer.Bool(true),
+		BlockOwnerDeletion: pointer.Bool(true),
+	}}
+
+	// Try to get existing policy
+	existing := &networkingv1.NetworkPolicy{}
+	err := r.Get(ctx, client.ObjectKey{Name: policy.Name, Namespace: policy.Namespace}, existing)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		// Create new policy
+		return r.Create(ctx, policy)
+	}
+
+	// Update existing policy
+	policy.ResourceVersion = existing.ResourceVersion
+	return r.Update(ctx, policy)
 }

@@ -20,107 +20,54 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GlobalRule defines a traffic rule
-type GlobalRule struct {
-	// Port number
-	Port int32 `json:"port"`
-
-	// Protocol (TCP/UDP)
-	Protocol string `json:"protocol"`
-}
-
-// GlobalRuleSet defines a set of ingress and egress rules
-type GlobalRuleSet struct {
-	// Enabled indicates whether this rule set is active
-	Enabled bool `json:"enabled"`
-
-	// Traffic defines the traffic-specific rules
-	// +optional
-	Traffic GlobalTrafficRules `json:"traffic,omitempty"`
-}
-
-// GlobalTrafficRules defines the traffic rules for ingress and egress
-type GlobalTrafficRules struct {
-	// Ingress rules to be applied globally
-	// +optional
-	Ingress []GlobalRule `json:"ingress,omitempty"`
-
-	// Egress rules to be applied globally
-	// +optional
-	Egress []GlobalRule `json:"egress,omitempty"`
-}
-
-// DefaultPolicyType defines the type of default policy
-// +kubebuilder:validation:Enum=allow;deny
-type DefaultPolicyType string
-
-const (
-	// PolicyAllow allows all traffic by default
-	PolicyAllow DefaultPolicyType = "allow"
-	// PolicyDeny denies all traffic by default
-	PolicyDeny DefaultPolicyType = "deny"
-)
-
-// DirectionPolicy defines the policy for a specific direction (ingress/egress)
-type DirectionPolicy struct {
-	// FollowDefault indicates whether to follow the default policy
-	// +optional
-	FollowDefault bool `json:"followDefault"`
-
-	// Policy defines the policy type when not following default
-	// +optional
-	Policy DefaultPolicyType `json:"policy,omitempty"`
-}
-
-// DefaultPolicy defines the default network policy configuration
-type DefaultPolicy struct {
-	// Type defines the default policy type (allow/deny)
-	// +kubebuilder:default=deny
-	// +kubebuilder:validation:Required
-	Type DefaultPolicyType `json:"type"`
-
-	// Traffic defines the traffic-specific policies
-	// +optional
-	Traffic TrafficPolicy `json:"traffic,omitempty"`
-}
-
-// TrafficPolicy defines the traffic-specific policies
-type TrafficPolicy struct {
-	// Ingress defines the ingress-specific policy
-	// +optional
-	Ingress DirectionPolicy `json:"ingress,omitempty"`
-
-	// Egress defines the egress-specific policy
-	// +optional
-	Egress DirectionPolicy `json:"egress,omitempty"`
-}
-
 // NetworkPolicyGeneratorSpec defines the desired state of NetworkPolicyGenerator
 type NetworkPolicyGeneratorSpec struct {
 	// Mode specifies the operation mode: "learning" or "enforcing"
+	// +kubebuilder:validation:Enum=learning;enforcing
 	Mode string `json:"mode,omitempty"`
 
 	// Duration specifies how long to analyze traffic in learning mode
 	Duration metav1.Duration `json:"duration,omitempty"`
 
-	// DefaultPolicy defines the default network policy configuration
-	DefaultPolicy DefaultPolicy `json:"defaultPolicy"`
+	// Policy defines the main policy configuration
+	Policy PolicyConfig `json:"policy"`
 
-	// AllowedNamespaces lists namespaces that are allowed to communicate when default policy is deny
+	// GlobalRules defines the global traffic rules
+	// +optional
+	GlobalRules []GlobalRule `json:"globalRules,omitempty"`
+}
+
+// PolicyConfig defines the main policy configuration
+type PolicyConfig struct {
+	// Type defines the policy type (allow/deny)
+	// +kubebuilder:validation:Enum=allow;deny
+	Type string `json:"type"`
+
+	// AllowedNamespaces lists namespaces that are allowed when policy type is deny
 	// +optional
 	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
 
-	// DeniedNamespaces lists namespaces that are denied to communicate when default policy is allow
+	// DeniedNamespaces lists namespaces that are denied when policy type is allow
 	// +optional
 	DeniedNamespaces []string `json:"deniedNamespaces,omitempty"`
+}
 
-	// GlobalAllowRules defines traffic rules that should be allowed globally
-	// +optional
-	GlobalAllowRules *GlobalRuleSet `json:"globalAllowRules,omitempty"`
+// GlobalRule defines a single traffic rule
+type GlobalRule struct {
+	// Type defines whether to allow or deny this rule
+	// +kubebuilder:validation:Enum=allow;deny
+	Type string `json:"type"`
 
-	// GlobalDenyRules defines traffic rules that should be denied globally
-	// +optional
-	GlobalDenyRules *GlobalRuleSet `json:"globalDenyRules,omitempty"`
+	// Port number
+	Port int32 `json:"port"`
+
+	// Protocol (TCP/UDP)
+	// +kubebuilder:validation:Enum=TCP;UDP
+	Protocol string `json:"protocol"`
+
+	// Direction of the traffic (ingress/egress)
+	// +kubebuilder:validation:Enum=ingress;egress
+	Direction string `json:"direction"`
 }
 
 // NetworkPolicyGeneratorStatus defines the observed state of NetworkPolicyGenerator

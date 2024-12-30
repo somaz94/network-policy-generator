@@ -50,9 +50,18 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 	generator := &securityv1.NetworkPolicyGenerator{}
 
 	if err := r.Get(ctx, req.NamespacedName, generator); err != nil {
-		if apierrors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Mode에 따라 Phase 설정
+	if generator.Spec.Mode == "enforcing" {
+		generator.Status.Phase = "Enforcing"
+	} else if generator.Spec.Mode == "learning" {
+		generator.Status.Phase = "Learning"
+	}
+
+	// Status 업데이트
+	if err := r.Status().Update(ctx, generator); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -96,11 +105,11 @@ func (r *NetworkPolicyGeneratorReconciler) deleteNetworkPolicies(ctx context.Con
 	// Get list of namespaces to clean up
 	var namespacesToClean []string
 
-	if generator.Spec.DefaultPolicy.Type == securityv1.PolicyAllow {
+	if generator.Spec.Policy.Type == "allow" {
 		// For allow policy, clean up denied namespaces
-		namespacesToClean = generator.Spec.DeniedNamespaces
+		namespacesToClean = generator.Spec.Policy.DeniedNamespaces
 	} else {
-		// For deny policy, clean up the generator's namespace
+		// For deny policy, clean up all namespaces
 		namespacesToClean = []string{generator.Namespace}
 	}
 

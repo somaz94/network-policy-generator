@@ -15,14 +15,6 @@ func NewValidator() *Validator {
 	return &Validator{}
 }
 
-// ValidateMode validates the mode of NetworkPolicyGenerator
-func (v *Validator) ValidateMode(mode string) error {
-	if mode != "learning" && mode != "enforcing" {
-		return fmt.Errorf("invalid mode: %s, must be either 'learning' or 'enforcing'", mode)
-	}
-	return nil
-}
-
 // ValidatePolicy checks if the generated NetworkPolicy is valid
 func (v *Validator) ValidatePolicy(policy *networkingv1.NetworkPolicy, generator *securityv1.NetworkPolicyGenerator) error {
 	if policy.Name == "" {
@@ -82,14 +74,16 @@ func (v *Validator) validatePorts(ports []networkingv1.NetworkPolicyPort) error 
 
 func (v *Validator) validateNamespaceConfigs(generator *securityv1.NetworkPolicyGenerator) error {
 	// Check for namespace overlap
-	deniedSet := make(map[string]bool)
-	for _, ns := range generator.Spec.DeniedNamespaces {
-		deniedSet[ns] = true
-	}
+	if generator.Spec.Policy.Type == "deny" {
+		deniedSet := make(map[string]bool)
+		for _, ns := range generator.Spec.Policy.DeniedNamespaces {
+			deniedSet[ns] = true
+		}
 
-	for _, ns := range generator.Spec.AllowedNamespaces {
-		if deniedSet[ns] {
-			return fmt.Errorf("namespace %s cannot be both allowed and denied", ns)
+		for _, ns := range generator.Spec.Policy.AllowedNamespaces {
+			if deniedSet[ns] {
+				return fmt.Errorf("namespace %s cannot be both allowed and denied", ns)
+			}
 		}
 	}
 

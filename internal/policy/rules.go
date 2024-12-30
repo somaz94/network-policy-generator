@@ -92,54 +92,38 @@ func GenerateDeniedNamespaceRules(namespaces []string) NamespaceRules {
 	return rules
 }
 
-// GenerateIngressRules generates ingress rules based on observed traffic
-func GenerateIngressRules(flows []securityv1.TrafficFlow) []networkingv1.NetworkPolicyIngressRule {
-	rules := make([]networkingv1.NetworkPolicyIngressRule, 0)
-	for _, flow := range flows {
-		rule := networkingv1.NetworkPolicyIngressRule{
-			From: []networkingv1.NetworkPolicyPeer{
-				{
-					NamespaceSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/metadata.name": flow.SourceNamespace,
-						},
-					},
-				},
-			},
-			Ports: []networkingv1.NetworkPolicyPort{
-				{
-					Protocol: (*v1.Protocol)(ptr.To(flow.Protocol)),
-					Port:     ptr.To(intstr.FromInt32(flow.Port)),
-				},
-			},
-		}
-		rules = append(rules, rule)
-	}
-	return rules
-}
+// GenerateGlobalRules generates rules based on global configuration
+func GenerateGlobalRules(rules []securityv1.GlobalRule) ([]networkingv1.NetworkPolicyIngressRule, []networkingv1.NetworkPolicyEgressRule) {
+	var ingressRules []networkingv1.NetworkPolicyIngressRule
+	var egressRules []networkingv1.NetworkPolicyEgressRule
 
-// GenerateEgressRules generates egress rules based on observed traffic
-func GenerateEgressRules(flows []securityv1.TrafficFlow) []networkingv1.NetworkPolicyEgressRule {
-	rules := make([]networkingv1.NetworkPolicyEgressRule, 0)
-	for _, flow := range flows {
-		rule := networkingv1.NetworkPolicyEgressRule{
-			To: []networkingv1.NetworkPolicyPeer{
-				{
-					NamespaceSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/metadata.name": flow.DestNamespace,
-						},
+	for _, rule := range rules {
+		if rule.Direction == "ingress" {
+			ingressRules = append(ingressRules, networkingv1.NetworkPolicyIngressRule{
+				Ports: []networkingv1.NetworkPolicyPort{{
+					Protocol: (*v1.Protocol)(ptr.To(rule.Protocol)),
+					Port:     ptr.To(intstr.FromInt32(rule.Port)),
+				}},
+				From: []networkingv1.NetworkPolicyPeer{{
+					IPBlock: &networkingv1.IPBlock{
+						CIDR: "0.0.0.0/0",
 					},
-				},
-			},
-			Ports: []networkingv1.NetworkPolicyPort{
-				{
-					Protocol: (*v1.Protocol)(ptr.To(flow.Protocol)),
-					Port:     ptr.To(intstr.FromInt32(flow.Port)),
-				},
-			},
+				}},
+			})
+		} else if rule.Direction == "egress" {
+			egressRules = append(egressRules, networkingv1.NetworkPolicyEgressRule{
+				Ports: []networkingv1.NetworkPolicyPort{{
+					Protocol: (*v1.Protocol)(ptr.To(rule.Protocol)),
+					Port:     ptr.To(intstr.FromInt32(rule.Port)),
+				}},
+				To: []networkingv1.NetworkPolicyPeer{{
+					IPBlock: &networkingv1.IPBlock{
+						CIDR: "0.0.0.0/0",
+					},
+				}},
+			})
 		}
-		rules = append(rules, rule)
 	}
-	return rules
+
+	return ingressRules, egressRules
 }

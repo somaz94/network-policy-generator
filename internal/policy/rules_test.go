@@ -45,37 +45,30 @@ func TestRules(t *testing.T) {
 		assert.ElementsMatch(t, namespaces, egressNS.Values)
 	})
 
-	t.Run("Generate Ingress Rules", func(t *testing.T) {
-		flows := []securityv1.TrafficFlow{
+	t.Run("Generate Global Rules", func(t *testing.T) {
+		globalRules := []securityv1.GlobalRule{
 			{
-				SourceNamespace: "source-ns",
-				SourcePod:       "source-pod",
-				Protocol:        "TCP",
-				Port:            80,
+				Direction: "ingress",
+				Protocol:  "TCP",
+				Port:      80,
+			},
+			{
+				Direction: "egress",
+				Protocol:  "TCP",
+				Port:      443,
 			},
 		}
 
-		rules := GenerateIngressRules(flows)
-		assert.Len(t, rules, 1)
-		assert.Equal(t, "source-ns",
-			rules[0].From[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"])
-		assert.Equal(t, int32(80), rules[0].Ports[0].Port.IntVal)
-	})
+		ingressRules, egressRules := GenerateGlobalRules(globalRules)
 
-	t.Run("Generate Egress Rules", func(t *testing.T) {
-		flows := []securityv1.TrafficFlow{
-			{
-				DestNamespace: "dest-ns",
-				DestPod:       "dest-pod",
-				Protocol:      "TCP",
-				Port:          443,
-			},
-		}
+		// Verify ingress rules
+		assert.Len(t, ingressRules, 1)
+		assert.Equal(t, int32(80), ingressRules[0].Ports[0].Port.IntVal)
+		assert.Equal(t, "0.0.0.0/0", ingressRules[0].From[0].IPBlock.CIDR)
 
-		rules := GenerateEgressRules(flows)
-		assert.Len(t, rules, 1)
-		assert.Equal(t, "dest-ns",
-			rules[0].To[0].NamespaceSelector.MatchLabels["kubernetes.io/metadata.name"])
-		assert.Equal(t, int32(443), rules[0].Ports[0].Port.IntVal)
+		// Verify egress rules
+		assert.Len(t, egressRules, 1)
+		assert.Equal(t, int32(443), egressRules[0].Ports[0].Port.IntVal)
+		assert.Equal(t, "0.0.0.0/0", egressRules[0].To[0].IPBlock.CIDR)
 	})
 }
