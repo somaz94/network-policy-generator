@@ -73,11 +73,14 @@ func (r *NetworkPolicyGeneratorReconciler) handleEnforcingMode(ctx context.Conte
 	// Create or update each NetworkPolicy
 	for _, policy := range policies {
 		if err := r.applyNetworkPolicy(ctx, generator, policy); err != nil {
+			log.Error(err, "failed to apply NetworkPolicy",
+				"namespace", policy.Namespace,
+				"name", policy.Name)
 			return ctrl.Result{}, err
 		}
 	}
 
-	// 상태 업데이트
+	// Update status
 	generator.Status.LastAnalyzed = metav1.Now()
 	if err := r.Status().Update(ctx, generator); err != nil {
 		log.Error(err, "failed to update generator status")
