@@ -59,6 +59,8 @@ type GlobalRule struct {
 	Type string `json:"type"`
 
 	// Port number
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port int32 `json:"port"`
 
 	// Protocol (TCP/UDP)
