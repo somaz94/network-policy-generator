@@ -31,3 +31,8 @@ go.work
 !/bin/.gitignore
 !/bin/README.md
 
+# MacOS
+.DS_Store
+
+# Coverage
+cover.out
