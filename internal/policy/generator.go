@@ -3,7 +3,6 @@ package policy
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -213,7 +212,7 @@ func (g *Generator) generateNetworkPolicy(generator *securityv1.NetworkPolicyGen
 					Ports: []networkingv1.NetworkPolicyPort{
 						{
 							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: rule.Port},
-							Protocol: (*corev1.Protocol)(&rule.Protocol),
+							Protocol: (*v1.Protocol)(&rule.Protocol),
 						},
 					},
 				}
