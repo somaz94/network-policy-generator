@@ -5,6 +5,8 @@
 
 A Kubernetes controller that automatically generates and manages Kubernetes Network Policies based on observed traffic patterns and user-defined rules.
 
+<br/>
+
 ## Description
 
 The Network Policy Generator is a Kubernetes operator that simplifies the creation and management of Network Policies by providing two main operational modes:
@@ -18,13 +20,19 @@ This tool helps security teams and cluster administrators implement network segm
 - Supporting both permissive (allow-based) and restrictive (deny-based) policy approaches
 - Enabling gradual transition from learning to enforcement phases
 
+<br/>
+
 ## Getting Started
+
+<br/>
 
 ### Prerequisites
 - go version v1.22.0+
 - docker version 17.03+.
 - kubectl version v1.11.3+.
 - Access to a Kubernetes v1.11.3+ cluster.
+
+<br/>
 
 ### To Deploy on the cluster
 
@@ -54,42 +62,42 @@ make deploy IMG=<some-registry>/network-policy-generator:tag
 privileges or be logged in as admin.
 
 **Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
+You can apply the samples (examples) from the config/samples:
 
 ```sh
 kubectl apply -k config/samples/
 ```
 
->**NOTE**: Ensure that the samples has default values to test it out.
+Available sample configurations:
+- `security_v1_networkpolicygenerator-allow.yaml`: Allow-based policy example
+- `security_v1_networkpolicygenerator-deny.yaml`: Deny-based policy example  
+- `security_v1_networkpolicygenerator.yaml`: Learning mode example
+- `test-policy.yaml`: Namespace-specific policy examples
+- `test.yaml`: Test pods and services for validation
+
+>**NOTE**: The samples include test namespaces (test-ns1, test-ns2, test-ns3) and sample pods for testing the network policies.
+
+<br/>
 
 ## Usage Examples
 
-### Learning Mode Example
-```yaml
-apiVersion: security.policy.io/v1
-kind: NetworkPolicyGenerator
-metadata:
-  name: traffic-learner
-spec:
-  mode: "learning"
-  duration: "24h"  # Analyze traffic for 24 hours
-  policy:
-    type: "allow"
-```
+<br/>
 
-### Enforcing Mode with Global Rules
+### 1. Allow-based Policy (Default Deny)
+Creates a policy that denies all traffic by default, only allowing traffic from specified namespaces:
+
 ```yaml
 apiVersion: security.policy.io/v1
 kind: NetworkPolicyGenerator
 metadata:
-  name: security-enforcer
+  name: test-policy-generator-allow
 spec:
   mode: "enforcing"
   policy:
-    type: "deny"
-    allowedNamespaces:
-      - "kube-system"
-      - "monitoring"
+    type: "allow"     # Default deny, explicit allow
+    deniedNamespaces: # Namespaces to deny access from
+      - "test-ns1"
+      - "test-ns2"
   globalRules:
     - type: "allow"
       port: 80
@@ -98,14 +106,99 @@ spec:
     - type: "allow"
       port: 443
       protocol: TCP
+      direction: "egress"
+```
+
+<br/>
+
+### 2. Deny-based Policy (Default Allow)
+Creates a policy that allows all traffic by default, only denying traffic from specified namespaces:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: test-policy-generator-deny
+spec:
+  mode: "enforcing"
+  policy:
+    type: "deny"      # Default allow, explicit deny
+    allowedNamespaces: # Only these namespaces are allowed
+      - "test-ns1"
+      - "test-ns2"
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      port: 443
+      protocol: TCP
+      direction: "egress"
+```
+
+<br/>
+
+### 3. Learning Mode Example
+Analyzes traffic patterns for a specified duration before generating policies:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: traffic-learner
+spec:
+  mode: "learning"
+  duration: "1m"      # Analyze traffic for 1 minute (use longer durations in production)
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "test-ns1"
+      - "test-ns2"
+    deniedNamespaces:
+      - "test-ns3"
+      - "test-ns4"
+```
+
+<br/>
+
+### 4. Namespace-specific Policy
+Apply different policies to different namespaces:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: test-policy-generator-deny
+  namespace: test-ns1
+spec:
+  mode: "enforcing"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "test-ns3"  # Only test-ns3 can access test-ns1
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
       direction: "ingress"
 ```
 
+<br/>
+
 ### Monitoring the Generator Status
 ```sh
+# View all NetworkPolicyGenerator resources
 kubectl get networkpolicygenerator
+
+# Get detailed information about a specific generator
 kubectl describe networkpolicygenerator <name>
+
+# Check the status and observed traffic (in learning mode)
+kubectl get networkpolicygenerator <name> -o yaml
 ```
+
+<br/>
 
 ### To Uninstall
 **Delete the instances (CRs) from the cluster:**
@@ -125,6 +218,8 @@ make uninstall
 ```sh
 make undeploy
 ```
+
+<br/>
 
 ## Project Distribution
 
@@ -149,31 +244,47 @@ Users can just run kubectl apply -f <URL for YAML BUNDLE> to install the project
 kubectl apply -f https://raw.githubusercontent.com/<org>/network-policy-generator/<tag or branch>/dist/install.yaml
 ```
 
-## Features
+<br/>
 
-- **Dual Operation Modes**: 
-  - Learning mode for traffic pattern analysis
-  - Enforcing mode for policy application
-- **Flexible Policy Types**: 
-  - Allow-based policies (default deny, explicit allow)
-  - Deny-based policies (default allow, explicit deny)
-- **Global Rule Management**: Define cluster-wide traffic rules
-- **Namespace-based Controls**: Granular control over inter-namespace communication
-- **Traffic Flow Monitoring**: Real-time observation of network traffic patterns
-- **Gradual Migration**: Smooth transition from permissive to restrictive network policies
+## Testing with Sample Resources
 
-## Architecture
+The project includes test resources to validate network policy generation:
 
-The Network Policy Generator consists of:
+<br/>
 
-1. **CustomResourceDefinition (CRD)**: Defines the NetworkPolicyGenerator resource
-2. **Controller**: Manages the lifecycle of network policies based on CRD specifications
-3. **Traffic Monitor**: Analyzes network flows during learning phase
-4. **Policy Engine**: Generates Kubernetes Network Policies from learned patterns
+### Test Environment Setup
+```sh
+# Create test namespaces
+kubectl create namespace test-ns1
+kubectl create namespace test-ns2  
+kubectl create namespace test-ns3
+
+# Apply test pods and services
+kubectl apply -f config/samples/test.yaml
+
+# Apply network policy generators
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-deny.yaml
+kubectl apply -f config/samples/test-policy.yaml
+```
+
+<br/>
+
+### Validate Network Policies
+```sh
+# Check generated network policies
+kubectl get networkpolicy -A
+
+# Test connectivity between pods
+kubectl exec -n test-ns1 test-pod1 -- curl test-service2.test-ns2.svc.cluster.local
+```
+
+<br/>
 
 ## Contributing
 
 Issues and pull requests are welcome.
+
+<br/>
 
 ## License
 
