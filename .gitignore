@@ -33,6 +33,3 @@ go.work
 
 # MacOS
 .DS_Store
-
-# Coverage
-cover.out

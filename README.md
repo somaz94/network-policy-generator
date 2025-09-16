@@ -1,8 +1,22 @@
-# network-policy-generator
-// TODO(user): Add simple overview of use/purpose
+# Network Policy Generator
+
+![Top Language](https://img.shields.io/github/languages/top/somaz94/network-policy-generator?color=green&logo=go&logoColor=b)
+![helios-lb](https://img.shields.io/github/v/tag/somaz94/network-policy-generator?label=helios-lb&logo=kubernetes&logoColor=white)
+
+A Kubernetes controller that automatically generates and manages Kubernetes Network Policies based on observed traffic patterns and user-defined rules.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+The Network Policy Generator is a Kubernetes operator that simplifies the creation and management of Network Policies by providing two main operational modes:
+
+- **Learning Mode**: Analyzes actual network traffic patterns within your cluster for a specified duration
+- **Enforcing Mode**: Automatically generates and applies Network Policies based on learned patterns or predefined rules
+
+This tool helps security teams and cluster administrators implement network segmentation more effectively by:
+- Reducing manual Network Policy creation overhead
+- Providing data-driven policy recommendations based on real traffic
+- Supporting both permissive (allow-based) and restrictive (deny-based) policy approaches
+- Enabling gradual transition from learning to enforcement phases
 
 ## Getting Started
 
@@ -13,6 +27,7 @@
 - Access to a Kubernetes v1.11.3+ cluster.
 
 ### To Deploy on the cluster
+
 **Build and push your image to the location specified by `IMG`:**
 
 ```sh
@@ -21,7 +36,7 @@ make docker-build docker-push IMG=<some-registry>/network-policy-generator:tag
 
 **NOTE:** This image ought to be published in the personal registry you specified.
 And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+Make sure you have the proper permission to the registry if the above commands don't work.
 
 **Install the CRDs into the cluster:**
 
@@ -46,6 +61,51 @@ kubectl apply -k config/samples/
 ```
 
 >**NOTE**: Ensure that the samples has default values to test it out.
+
+## Usage Examples
+
+### Learning Mode Example
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: traffic-learner
+spec:
+  mode: "learning"
+  duration: "24h"  # Analyze traffic for 24 hours
+  policy:
+    type: "allow"
+```
+
+### Enforcing Mode with Global Rules
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: security-enforcer
+spec:
+  mode: "enforcing"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+      - "monitoring"
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      port: 443
+      protocol: TCP
+      direction: "ingress"
+```
+
+### Monitoring the Generator Status
+```sh
+kubectl get networkpolicygenerator
+kubectl describe networkpolicygenerator <name>
+```
 
 ### To Uninstall
 **Delete the instances (CRs) from the cluster:**
@@ -89,26 +149,33 @@ Users can just run kubectl apply -f <URL for YAML BUNDLE> to install the project
 kubectl apply -f https://raw.githubusercontent.com/<org>/network-policy-generator/<tag or branch>/dist/install.yaml
 ```
 
+## Features
+
+- **Dual Operation Modes**: 
+  - Learning mode for traffic pattern analysis
+  - Enforcing mode for policy application
+- **Flexible Policy Types**: 
+  - Allow-based policies (default deny, explicit allow)
+  - Deny-based policies (default allow, explicit deny)
+- **Global Rule Management**: Define cluster-wide traffic rules
+- **Namespace-based Controls**: Granular control over inter-namespace communication
+- **Traffic Flow Monitoring**: Real-time observation of network traffic patterns
+- **Gradual Migration**: Smooth transition from permissive to restrictive network policies
+
+## Architecture
+
+The Network Policy Generator consists of:
+
+1. **CustomResourceDefinition (CRD)**: Defines the NetworkPolicyGenerator resource
+2. **Controller**: Manages the lifecycle of network policies based on CRD specifications
+3. **Traffic Monitor**: Analyzes network flows during learning phase
+4. **Policy Engine**: Generates Kubernetes Network Policies from learned patterns
+
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
 
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+Issues and pull requests are welcome.
 
 ## License
 
-Copyright 2024.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
