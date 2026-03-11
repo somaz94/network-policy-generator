@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.1.1](https://github.com/somaz94/network-policy-generator/tree/v0.1.1) (2026-03-11)
+
+[Full Changelog](https://github.com/somaz94/network-policy-generator/compare/v0.1.0...v0.1.1)
+
 ## [v0.1.0](https://github.com/somaz94/network-policy-generator/tree/v0.1.0) (2026-03-11)
 
 [Full Changelog](https://github.com/somaz94/network-policy-generator/compare/v0.0.1...v0.1.0)
