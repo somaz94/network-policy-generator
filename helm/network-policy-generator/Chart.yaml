@@ -2,8 +2,8 @@ apiVersion: v2
 name: network-policy-generator
 description: A Helm chart for Network Policy Generator - Kubernetes Operator that automatically generates NetworkPolicy and CiliumNetworkPolicy resources
 type: application
-version: 0.1.1
-appVersion: "v0.1.1"
+version: 0.1.2
+appVersion: "v0.1.2"
 kubeVersion: ">=1.16.0-0"
 keywords:
   - kubernetes

@@ -8,11 +8,11 @@ When releasing a new version, update the following files:
 
 | File | Field | Example |
 |------|-------|---------|
-| `Makefile` | `IMG ?= somaz940/network-policy-generator:<version>` | `v0.1.1` |
-| `helm/network-policy-generator/Chart.yaml` | `version` (chart version, without `v` prefix) | `0.1.1` |
-| `helm/network-policy-generator/Chart.yaml` | `appVersion` (app version, with `v` prefix) | `"v0.1.1"` |
-| `helm/network-policy-generator/values.yaml` | `image.tag` | `v0.1.1` |
-| `config/manager/kustomization.yaml` | `newTag` | `v0.1.1` |
+| `Makefile` | `IMG ?= somaz940/network-policy-generator:<version>` | `v0.1.2` |
+| `helm/network-policy-generator/Chart.yaml` | `version` (chart version, without `v` prefix) | `0.1.2` |
+| `helm/network-policy-generator/Chart.yaml` | `appVersion` (app version, with `v` prefix) | `"v0.1.2"` |
+| `helm/network-policy-generator/values.yaml` | `image.tag` | `v0.1.2` |
+| `config/manager/kustomization.yaml` | `newTag` | `v0.1.2` |
 
 <br/>
 

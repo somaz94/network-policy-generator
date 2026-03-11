@@ -46,7 +46,7 @@ helm install npg network-policy-generator/network-policy-generator
 
 # Or install with custom values
 helm install npg network-policy-generator/network-policy-generator \
-  --set image.tag=v0.1.1 \
+  --set image.tag=v0.1.2 \
   --set crds.cleanup=false \
   --namespace npg-system --create-namespace
 ```
@@ -63,7 +63,7 @@ kubectl apply -f https://raw.githubusercontent.com/somaz94/network-policy-genera
 
 > **NOTE**: Generate `dist/install.yaml` first if it doesn't exist:
 > ```bash
-> make build-installer IMG=somaz940/network-policy-generator:v0.1.1
+> make build-installer IMG=somaz940/network-policy-generator:v0.1.2
 > ```
 
 <br/>
@@ -79,7 +79,7 @@ cd network-policy-generator
 make install
 
 # Deploy the controller
-make deploy IMG=somaz940/network-policy-generator:v0.1.1
+make deploy IMG=somaz940/network-policy-generator:v0.1.2
 ```
 
 <br/>
