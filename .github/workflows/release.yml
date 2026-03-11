@@ -25,10 +25,14 @@ jobs:
         run: |
           CURRENT_TAG="${{ github.ref_name }}"
           PREVIOUS_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | grep -B1 "^${CURRENT_TAG}$" | head -n1)
+          if [ "$PREVIOUS_TAG" = "$CURRENT_TAG" ]; then
+            PREVIOUS_TAG=""
+          fi
           echo "PREVIOUS_TAG=${PREVIOUS_TAG}" >> "$GITHUB_ENV"
           echo "CURRENT_TAG=${CURRENT_TAG}" >> "$GITHUB_ENV"
 
       - name: Generate changelog for release
+        if: env.PREVIOUS_TAG != ''
         id: changelog
         uses: janheinrichmerker/action-github-changelog-generator@v2.4
         with:
@@ -42,10 +46,14 @@ jobs:
       - name: Read changelog
         id: read_changelog
         run: |
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          cat RELEASE.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          rm -rf RELEASE.md
+          if [ -f RELEASE.md ]; then
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            cat RELEASE.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            rm -rf RELEASE.md
+          else
+            echo "changelog=Initial release ${CURRENT_TAG}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create GitHub release
         uses: actions/create-release@v1
