@@ -142,10 +142,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.NetworkPolicyGeneratorReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	if err = controller.NewReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkPolicyGenerator")
 		os.Exit(1)
 	}

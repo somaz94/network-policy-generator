@@ -29,6 +29,14 @@ type NetworkPolicyGeneratorSpec struct {
 	// Duration specifies how long to analyze traffic in learning mode
 	Duration metav1.Duration `json:"duration,omitempty"`
 
+	// PolicyEngine specifies the CNI-specific policy engine to use
+	// "kubernetes" generates standard NetworkPolicy (networking.k8s.io/v1)
+	// "cilium" generates CiliumNetworkPolicy (cilium.io/v2)
+	// +kubebuilder:validation:Enum=kubernetes;cilium
+	// +kubebuilder:default=kubernetes
+	// +optional
+	PolicyEngine string `json:"policyEngine,omitempty"`
+
 	// Policy defines the main policy configuration
 	Policy PolicyConfig `json:"policy"`
 

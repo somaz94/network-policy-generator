@@ -120,6 +120,16 @@ spec:
                 required:
                 - type
                 type: object
+              policyEngine:
+                default: kubernetes
+                description: |-
+                  PolicyEngine specifies the CNI-specific policy engine to use
+                  "kubernetes" generates standard NetworkPolicy (networking.k8s.io/v1)
+                  "cilium" generates CiliumNetworkPolicy (cilium.io/v2)
+                enum:
+                - kubernetes
+                - cilium
+                type: string
             required:
             - policy
             type: object

@@ -6,13 +6,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
 )
 
-// Generator handles NetworkPolicy generation
+// Generator handles NetworkPolicy generation (kept for backward compatibility)
 type Generator struct{}
 
 // NewGenerator creates a new NetworkPolicy generator
@@ -22,9 +23,41 @@ func NewGenerator() *Generator {
 
 // GenerateNetworkPolicies creates NetworkPolicies for target namespaces
 func (g *Generator) GenerateNetworkPolicies(generator *securityv1.NetworkPolicyGenerator) ([]*networkingv1.NetworkPolicy, error) {
+	engine := &KubernetesEngine{}
+	return engine.generateK8sPolicies(generator)
+}
+
+// KubernetesEngine generates standard Kubernetes NetworkPolicy resources
+type KubernetesEngine struct{}
+
+// NewKubernetesEngine creates a new Kubernetes policy engine
+func NewKubernetesEngine() *KubernetesEngine {
+	return &KubernetesEngine{}
+}
+
+// EngineName returns "kubernetes"
+func (e *KubernetesEngine) EngineName() string {
+	return "kubernetes"
+}
+
+// GeneratePolicies implements PolicyEngine for standard Kubernetes NetworkPolicy
+func (e *KubernetesEngine) GeneratePolicies(generator *securityv1.NetworkPolicyGenerator) ([]runtime.Object, error) {
+	policies, err := e.generateK8sPolicies(generator)
+	if err != nil {
+		return nil, err
+	}
+
+	objects := make([]runtime.Object, len(policies))
+	for i, p := range policies {
+		objects[i] = p
+	}
+	return objects, nil
+}
+
+// generateK8sPolicies contains the core Kubernetes NetworkPolicy generation logic
+func (e *KubernetesEngine) generateK8sPolicies(generator *securityv1.NetworkPolicyGenerator) ([]*networkingv1.NetworkPolicy, error) {
 	var policies []*networkingv1.NetworkPolicy
 
-	// 기본 NetworkPolicy 객체 생성
 	basePolicy := &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-generated", generator.Name),
@@ -47,15 +80,12 @@ func (g *Generator) GenerateNetworkPolicies(generator *securityv1.NetworkPolicyG
 		},
 	}
 
-	// Policy Type에 따른 정책 생성
 	if generator.Spec.Policy.Type == "allow" {
-		// Allow 타입: DeniedNamespaces에 정책 생성
 		if len(generator.Spec.Policy.DeniedNamespaces) > 0 {
 			for _, ns := range generator.Spec.Policy.DeniedNamespaces {
 				policy := basePolicy.DeepCopy()
 				policy.Namespace = ns
 
-				// 기본 규칙 설정
 				policy.Spec.Ingress = []networkingv1.NetworkPolicyIngressRule{{
 					From: []networkingv1.NetworkPolicyPeer{{
 						NamespaceSelector: &metav1.LabelSelector{
@@ -83,12 +113,10 @@ func (g *Generator) GenerateNetworkPolicies(generator *securityv1.NetworkPolicyG
 			}
 		}
 	} else {
-		// Deny 타입: 현재 네임스페이스에 정책 생성
 		policy := basePolicy.DeepCopy()
 		policy.Namespace = generator.Namespace
 
 		if len(generator.Spec.Policy.AllowedNamespaces) > 0 {
-			// AllowedNamespaces만 허용
 			var ingressPeers []networkingv1.NetworkPolicyPeer
 			var egressPeers []networkingv1.NetworkPolicyPeer
 
@@ -107,7 +135,6 @@ func (g *Generator) GenerateNetworkPolicies(generator *securityv1.NetworkPolicyG
 			policy.Spec.Ingress = []networkingv1.NetworkPolicyIngressRule{{From: ingressPeers}}
 			policy.Spec.Egress = []networkingv1.NetworkPolicyEgressRule{{To: egressPeers}}
 		} else {
-			// 모든 트래픽 차단
 			policy.Spec.Ingress = []networkingv1.NetworkPolicyIngressRule{}
 			policy.Spec.Egress = []networkingv1.NetworkPolicyEgressRule{}
 		}
@@ -115,16 +142,15 @@ func (g *Generator) GenerateNetworkPolicies(generator *securityv1.NetworkPolicyG
 		policies = append(policies, policy)
 	}
 
-	// DNS egress 규칙 추가 (kube-dns/coredns 접근 허용)
-	dnsEgressRule := dnsEgressRule()
+	// DNS egress rule
+	dnsRule := dnsEgressRule()
 	for _, policy := range policies {
-		policy.Spec.Egress = append(policy.Spec.Egress, dnsEgressRule)
+		policy.Spec.Egress = append(policy.Spec.Egress, dnsRule)
 	}
 
-	// Global Rules 적용
+	// Global rules
 	if generator.Spec.GlobalRules != nil {
 		for _, policy := range policies {
-			// Add global ingress rules
 			for _, rule := range generator.Spec.GlobalRules {
 				if rule.Direction == "ingress" {
 					policy.Spec.Ingress = append(policy.Spec.Ingress, networkingv1.NetworkPolicyIngressRule{

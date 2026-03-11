@@ -8,6 +8,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func TestDnsEgressRule(t *testing.T) {
+	rule := dnsEgressRule()
+	assert.Len(t, rule.Ports, 2)
+	assert.Equal(t, int32(53), rule.Ports[0].Port.IntVal)
+	assert.Equal(t, int32(53), rule.Ports[1].Port.IntVal)
+}
+
+func TestGenerateDeniedNamespaceRulesEmpty(t *testing.T) {
+	rules := GenerateDeniedNamespaceRules([]string{})
+	assert.Empty(t, rules.Ingress)
+	assert.Empty(t, rules.Egress)
+}
+
 func TestRules(t *testing.T) {
 	t.Run("Generate Namespace Rules", func(t *testing.T) {
 		namespaces := []string{"ns1", "ns2"}

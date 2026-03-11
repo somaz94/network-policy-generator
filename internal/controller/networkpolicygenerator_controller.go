@@ -25,9 +25,9 @@ type NetworkPolicyGeneratorReconciler struct {
 }
 
 // NewReconciler creates a new NetworkPolicyGeneratorReconciler
-func NewReconciler(client client.Client, scheme *runtime.Scheme) *NetworkPolicyGeneratorReconciler {
+func NewReconciler(c client.Client, scheme *runtime.Scheme) *NetworkPolicyGeneratorReconciler {
 	return &NetworkPolicyGeneratorReconciler{
-		Client:    client,
+		Client:    c,
 		Scheme:    scheme,
 		Generator: policy.NewGenerator(),
 		Validator: policy.NewValidator(),
@@ -38,6 +38,7 @@ func NewReconciler(client client.Client, scheme *runtime.Scheme) *NetworkPolicyG
 // +kubebuilder:rbac:groups=security.policy.io,resources=networkpolicygenerators/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=security.policy.io,resources=networkpolicygenerators/finalizers,verbs=update
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cilium.io,resources=ciliumnetworkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 
