@@ -1,0 +1,68 @@
+name: Helm Chart Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package and Publish Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Update Chart appVersion
+        run: |
+          TAG="${GITHUB_REF_NAME:-$(git describe --tags --abbrev=0 2>/dev/null || echo '')}"
+          if [ -n "$TAG" ]; then
+            sed -i "s/^appVersion:.*/appVersion: \"${TAG}\"/" ./helm/network-policy-generator/Chart.yaml
+          fi
+
+      - name: Package Helm Chart
+        run: |
+          mkdir -p helm-repo
+          helm package ./helm/network-policy-generator -d helm-repo/
+
+      - name: Checkout gh-pages branch
+        run: |
+          git fetch origin gh-pages:gh-pages 2>/dev/null || true
+          if git rev-parse --verify gh-pages >/dev/null 2>&1; then
+            git checkout gh-pages -- helm-repo/index.yaml 2>/dev/null || true
+          fi
+
+      - name: Generate Helm Repo Index
+        run: |
+          if [ -f helm-repo/index.yaml ]; then
+            helm repo index helm-repo/ --url https://somaz94.github.io/network-policy-generator/helm-repo --merge helm-repo/index.yaml
+          else
+            helm repo index helm-repo/ --url https://somaz94.github.io/network-policy-generator/helm-repo
+          fi
+
+      - name: Deploy to gh-pages
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          if git rev-parse --verify gh-pages >/dev/null 2>&1; then
+            git checkout gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf .
+          fi
+
+          find . -maxdepth 1 ! -name '.' ! -name '.git' ! -name 'helm-repo' -exec rm -rf {} +
+          git add helm-repo/
+          git commit -m "chore: update helm chart repository" || echo "No changes to commit"
+          git push origin gh-pages

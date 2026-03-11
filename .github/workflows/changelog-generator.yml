@@ -1,0 +1,54 @@
+name: Generate changelog
+
+on:
+  pull_request:
+    types: [closed]
+  issues:
+    types: [closed]
+  workflow_run:
+    workflows: ["Create release"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-changelog:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag
+        id: get_first_tag
+        run: |
+          latest_tag="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n1)"
+          echo "LATEST_TAG=${latest_tag}" >> "$GITHUB_ENV"
+          echo "FIRST_TAG=v0.0.1" >> "$GITHUB_ENV"
+
+      - name: Generate changelog
+        uses: janheinrichmerker/action-github-changelog-generator@v2.4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          futureRelease: ${{ github.event.release.tag_name || env.LATEST_TAG }}
+          output: CHANGELOG.md
+          sinceTag: ${{ env.FIRST_TAG }}
+          excludeTagsRegex: "^v[0-9]$"
+
+      - name: Git Commit and Push
+        uses: somaz94/go-git-commit-action@v1
+        with:
+          branch: main
+          commit_message: "docs: update changelog"
+          user_email: "actions@github.com"
+          user_name: "GitHub Actions"
+          file_pattern: "CHANGELOG.md"
+          github_token: ${{ secrets.GITHUB_TOKEN }}

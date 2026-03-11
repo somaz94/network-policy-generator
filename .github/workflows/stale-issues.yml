@@ -1,0 +1,23 @@
+name: Close Stale Issues
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/stale@v10
+        with:
+          days-before-stale: 30
+          days-before-close: 7
+          stale-issue-message: 'This issue has been automatically marked as stale due to 30 days of inactivity. It will be closed automatically in 7 days if no further activity occurs.'
+          close-issue-message: 'This issue has been automatically closed due to inactivity. Feel free to reopen if needed.'
+          stale-issue-label: 'stale'
+          exempt-issue-labels: 'pinned,security,on-hold'

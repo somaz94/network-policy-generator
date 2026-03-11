@@ -1,0 +1,91 @@
+name: Create release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    name: "Release"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Get previous tag
+        id: previoustag
+        run: |
+          CURRENT_TAG="${{ github.ref_name }}"
+          PREVIOUS_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | grep -B1 "^${CURRENT_TAG}$" | head -n1)
+          echo "PREVIOUS_TAG=${PREVIOUS_TAG}" >> "$GITHUB_ENV"
+          echo "CURRENT_TAG=${CURRENT_TAG}" >> "$GITHUB_ENV"
+
+      - name: Generate changelog for release
+        id: changelog
+        uses: janheinrichmerker/action-github-changelog-generator@v2.4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          futureRelease: ${{ env.CURRENT_TAG }}
+          sinceTag: ${{ env.PREVIOUS_TAG }}
+          unreleased: false
+          excludeTagsRegex: "^v[0-9]$"
+          output: RELEASE.md
+
+      - name: Read changelog
+        id: read_changelog
+        run: |
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat RELEASE.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          rm -rf RELEASE.md
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: ${{ steps.read_changelog.outputs.changelog }}
+
+      - name: Update major version tag
+        env:
+          CURRENT_TAG: ${{ github.ref_name }}
+          MAJOR_VERSION: ${{ github.ref_name }}
+        run: |
+          git checkout main
+          git fetch --tags
+          MAJOR_VERSION="${CURRENT_TAG%%.*}"
+          COMMIT_SHA=$(git rev-parse ${{ github.sha }})
+          echo "Current commit SHA: $COMMIT_SHA"
+          echo "Updating $MAJOR_VERSION to point to $CURRENT_TAG at commit $COMMIT_SHA"
+          echo "MAJOR_VERSION=${MAJOR_VERSION}" >> "$GITHUB_ENV"
+          echo "COMMIT_SHA=${COMMIT_SHA}" >> "$GITHUB_ENV"
+
+      - name: Delete old major version tag
+        uses: somaz94/go-git-commit-action@v1
+        with:
+          user_email: 'action@github.com'
+          user_name: 'GitHub Action'
+          tag_name: ${{ env.MAJOR_VERSION }}
+          delete_tag: true
+          github_token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Create new major version tag
+        uses: somaz94/go-git-commit-action@v1
+        with:
+          user_email: 'action@github.com'
+          user_name: 'GitHub Action'
+          tag_name: ${{ env.MAJOR_VERSION }}
+          tag_reference: ${{ env.COMMIT_SHA }}
+          github_token: ${{ secrets.PAT_TOKEN }}
