@@ -13,6 +13,46 @@ import (
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
 )
 
+func TestWithCollectInterval(t *testing.T) {
+	fakeClient := fake.NewSimpleClientset()
+	interval := 10 * time.Second
+
+	monitor := NewMonitor(fakeClient, "test-ns", WithCollectInterval(interval))
+	assert.Equal(t, interval, monitor.collectInterval)
+}
+
+func TestMonitorContextCancellation(t *testing.T) {
+	fakeClient := fake.NewSimpleClientset()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	monitor := NewMonitor(fakeClient, "test-ns", WithCollectInterval(100*time.Millisecond))
+	err := monitor.Start(ctx)
+	assert.NoError(t, err)
+
+	time.Sleep(250 * time.Millisecond)
+	cancel()
+	time.Sleep(200 * time.Millisecond)
+
+	traffic := monitor.GetTraffic()
+	assert.NotNil(t, traffic)
+}
+
+func TestMonitorStopChannel(t *testing.T) {
+	fakeClient := fake.NewSimpleClientset()
+	ctx := context.Background()
+
+	monitor := NewMonitor(fakeClient, "test-ns", WithCollectInterval(100*time.Millisecond))
+	err := monitor.Start(ctx)
+	assert.NoError(t, err)
+
+	time.Sleep(250 * time.Millisecond)
+	monitor.Stop()
+	time.Sleep(200 * time.Millisecond)
+
+	traffic := monitor.GetTraffic()
+	assert.NotNil(t, traffic)
+}
+
 func TestMonitor(t *testing.T) {
 	// Setup
 	ctx := context.Background()

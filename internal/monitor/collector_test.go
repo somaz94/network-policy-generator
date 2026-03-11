@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -112,4 +113,80 @@ func TestCollector(t *testing.T) {
 		assert.Equal(t, "api-service", flows[1].DestPod)
 		assert.Equal(t, int32(8080), flows[1].Port)
 	})
+}
+
+func TestExtractNamespaceEdgeCases(t *testing.T) {
+	t.Run("Single part host", func(t *testing.T) {
+		ns := ExtractNamespace("singlehost")
+		assert.Equal(t, "", ns)
+	})
+
+	t.Run("Full FQDN", func(t *testing.T) {
+		ns := ExtractNamespace("svc.namespace.svc.cluster.local")
+		assert.Equal(t, "namespace", ns)
+	})
+}
+
+func TestExtractServiceNameEdgeCases(t *testing.T) {
+	t.Run("Empty string", func(t *testing.T) {
+		svc := ExtractServiceName("")
+		assert.Equal(t, "", svc)
+	})
+
+	t.Run("Full FQDN", func(t *testing.T) {
+		svc := ExtractServiceName("my-svc.namespace.svc.cluster.local")
+		assert.Equal(t, "my-svc", svc)
+	})
+}
+
+func TestCollectTrafficData(t *testing.T) {
+	ctx := context.Background()
+	fakeClient := fake.NewSimpleClientset()
+	testNamespace := "collect-test-ns"
+
+	// Create a pod in the fake client
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "web-pod",
+			Namespace: testNamespace,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name: "web",
+				Ports: []corev1.ContainerPort{
+					{ContainerPort: 8080, Protocol: "TCP"},
+				},
+				Env: []corev1.EnvVar{
+					{Name: "REDIS_HOST", Value: "redis.cache:6379"},
+				},
+			}},
+		},
+	}
+	_, err := fakeClient.CoreV1().Pods(testNamespace).Create(ctx, pod, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	collector := NewCollector(fakeClient, testNamespace)
+	flows, err := collector.CollectTrafficData(ctx)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, flows)
+
+	// Should have port flow + env var flow
+	assert.GreaterOrEqual(t, len(flows), 2)
+}
+
+func TestAnalyzeEnvVarsNoMatch(t *testing.T) {
+	fakeClient := fake.NewSimpleClientset()
+	collector := NewCollector(fakeClient, "test-ns")
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "test-ns"},
+	}
+
+	envVars := []corev1.EnvVar{
+		{Name: "LOG_LEVEL", Value: "debug"},
+		{Name: "MAX_RETRIES", Value: "3"},
+	}
+
+	flows := collector.AnalyzeEnvVars(envVars, pod)
+	assert.Empty(t, flows)
 }

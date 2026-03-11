@@ -80,6 +80,12 @@ type mockClient struct {
 	client.Client
 	statusUpdateError error
 	deleteError       error
+	updateError       error
+	createError       error
+	getError          error
+	noopGet           bool
+	noopCreate        bool
+	noopUpdate        bool
 }
 
 func (m *mockClient) Status() client.StatusWriter {
@@ -97,12 +103,33 @@ func (m *mockClient) Delete(ctx context.Context, obj client.Object, opts ...clie
 }
 
 func (m *mockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	err := m.Client.Get(ctx, key, obj)
-	if err != nil {
-		return err
+	if m.getError != nil {
+		return m.getError
 	}
-	// Copy the object to preserve any modifications made by the test
-	return nil
+	if m.noopGet {
+		return nil
+	}
+	return m.Client.Get(ctx, key, obj)
+}
+
+func (m *mockClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	if m.updateError != nil {
+		return m.updateError
+	}
+	if m.noopUpdate {
+		return nil
+	}
+	return m.Client.Update(ctx, obj, opts...)
+}
+
+func (m *mockClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	if m.createError != nil {
+		return m.createError
+	}
+	if m.noopCreate {
+		return nil
+	}
+	return m.Client.Create(ctx, obj, opts...)
 }
 
 type mockStatusWriter struct {
