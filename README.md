@@ -51,7 +51,7 @@ helm install npg network-policy-generator/network-policy-generator \
   --namespace npg-system --create-namespace
 ```
 
-For full Helm chart options, see [Helm README](helm/README.md).
+For full Helm chart options, see [Helm README](docs/HELM.md).
 
 <br/>
 
@@ -274,7 +274,17 @@ make test-helm ENGINE=kubernetes           # Kubernetes only
 make test-helm ENGINE=cilium               # Cilium only
 ```
 
-For detailed manual test steps and sample descriptions, see [Test Guide](config/samples/TEST_README.md).
+For detailed manual test steps and sample descriptions, see [Test Guide](docs/TESTING.md).
+
+<br/>
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Helm Chart](docs/HELM.md) | Helm chart installation, configuration, and values reference |
+| [Testing Guide](docs/TESTING.md) | Unit, integration, Helm, and manual test instructions |
+| [Version Bump](docs/VERSION_BUMP.md) | Checklist for releasing a new version |
 
 <br/>
 
