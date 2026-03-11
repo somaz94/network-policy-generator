@@ -1,7 +1,7 @@
 # Network Policy Generator
 
 ![Top Language](https://img.shields.io/github/languages/top/somaz94/network-policy-generator?color=green&logo=go&logoColor=b)
-![helios-lb](https://img.shields.io/github/v/tag/somaz94/network-policy-generator?label=helios-lb&logo=kubernetes&logoColor=white)
+![Version](https://img.shields.io/github/v/tag/somaz94/network-policy-generator?label=version&logo=kubernetes&logoColor=white)
 
 A Kubernetes controller that automatically generates and manages Kubernetes Network Policies based on observed traffic patterns and user-defined rules.
 

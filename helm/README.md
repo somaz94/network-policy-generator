@@ -38,7 +38,7 @@ helm install npg ./helm/network-policy-generator
 |-----------|-------------|---------|
 | `namespace` | Namespace for the controller | `network-policy-generator-system` |
 | `image.repository` | Controller image repository | `somaz940/network-policy-generator` |
-| `image.tag` | Controller image tag | `v0.0.3` |
+| `image.tag` | Controller image tag | `v0.1.0` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `serviceAccount.create` | Create service account | `true` |
 | `serviceAccount.name` | Service account name | `network-policy-generator-controller-manager` |
