@@ -284,7 +284,9 @@ For detailed manual test steps and sample descriptions, see [Test Guide](docs/TE
 |----------|-------------|
 | [Helm Chart](docs/HELM.md) | Helm chart installation, configuration, and values reference |
 | [Testing Guide](docs/TESTING.md) | Unit, integration, Helm, and manual test instructions |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common issues and solutions |
 | [Version Bump](docs/VERSION_BUMP.md) | Checklist for releasing a new version |
+| [Contributing](CONTRIBUTING.md) | How to contribute to this project |
 
 <br/>
 
