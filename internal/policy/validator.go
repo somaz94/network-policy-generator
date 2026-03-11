@@ -22,7 +22,7 @@ func (v *Validator) ValidatePolicy(policy *networkingv1.NetworkPolicy, generator
 	}
 
 	// allow 타입은 deniedNamespaces에 정책을 생성하므로 namespace가 다를 수 있음
-	if generator.Spec.Policy.Type != "allow" && policy.Namespace != generator.Namespace {
+	if generator.Spec.Policy.Type != PolicyTypeAllow && policy.Namespace != generator.Namespace {
 		return fmt.Errorf("network policy namespace must match generator namespace")
 	}
 
@@ -75,7 +75,7 @@ func (v *Validator) validatePorts(ports []networkingv1.NetworkPolicyPort) error 
 
 func (v *Validator) validateNamespaceConfigs(generator *securityv1.NetworkPolicyGenerator) error {
 	// Check for namespace overlap
-	if generator.Spec.Policy.Type == "deny" {
+	if generator.Spec.Policy.Type == PolicyTypeDeny {
 		deniedSet := make(map[string]bool)
 		for _, ns := range generator.Spec.Policy.DeniedNamespaces {
 			deniedSet[ns] = true

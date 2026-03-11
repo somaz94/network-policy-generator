@@ -53,101 +53,49 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 	generator := &securityv1.NetworkPolicyGenerator{}
 	if err := r.Get(ctx, req.NamespacedName, generator); err != nil {
 		if !apierrors.IsNotFound(err) {
-			log.Error(err, "Failed to get NetworkPolicyGenerator")
+			log.Error(err, "failed to get NetworkPolicyGenerator")
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Mode에 따라 Phase 설정
-	oldPhase := generator.Status.Phase
-	if generator.Spec.Mode == "enforcing" {
-		generator.Status.Phase = "Enforcing"
-	} else if generator.Spec.Mode == "learning" {
-		generator.Status.Phase = "Learning"
-	}
-
-	// Phase가 변경되었을 때만 로그
-	if oldPhase != generator.Status.Phase {
-		log.Info("Phase changed",
-			"name", generator.Name,
-			"namespace", generator.Namespace,
-			"oldPhase", oldPhase,
-			"newPhase", generator.Status.Phase)
-	}
-
-	// Status 업데이트
-	if err := r.Status().Update(ctx, generator); err != nil {
-		log.Error(err, "Failed to update status",
-			"name", generator.Name,
-			"namespace", generator.Namespace,
-			"phase", generator.Status.Phase)
+	// Sync phase from mode
+	if err := r.syncPhase(ctx, generator); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Handle deletion
 	if !generator.ObjectMeta.DeletionTimestamp.IsZero() {
-		log.Info("Resource is being deleted",
-			"name", generator.Name,
-			"namespace", generator.Namespace)
-
-		if containsString(generator.ObjectMeta.Finalizers, finalizerName) {
-			if err := r.deleteNetworkPolicies(ctx, generator); err != nil {
-				log.Error(err, "Failed to delete NetworkPolicies")
-				return ctrl.Result{}, err
-			}
-			generator.ObjectMeta.Finalizers = removeString(generator.ObjectMeta.Finalizers, finalizerName)
-			if err := r.Update(ctx, generator); err != nil {
-				log.Error(err, "Failed to remove finalizer")
-				return ctrl.Result{}, err
-			}
-			log.Info("Successfully removed finalizer",
-				"name", generator.Name,
-				"namespace", generator.Namespace)
-		}
-		return ctrl.Result{}, nil
+		return r.handleDeletion(ctx, generator)
 	}
 
 	// Add finalizer if it doesn't exist
 	if !containsString(generator.ObjectMeta.Finalizers, finalizerName) {
-		log.Info("Adding finalizer",
-			"name", generator.Name,
-			"namespace", generator.Namespace)
-
+		log.Info("Adding finalizer", "name", generator.Name, "namespace", generator.Namespace)
 		generator.ObjectMeta.Finalizers = append(generator.ObjectMeta.Finalizers, finalizerName)
 		if err := r.Update(ctx, generator); err != nil {
-			log.Error(err, "Failed to add finalizer")
+			log.Error(err, "failed to add finalizer")
 			return ctrl.Result{}, err
 		}
 	}
 
-	// Mode에 따른 처리
+	// Handle mode
 	var result ctrl.Result
 	var err error
 
 	switch generator.Spec.Mode {
-	case "learning":
-		log.Info("Handling learning mode",
-			"name", generator.Name,
-			"namespace", generator.Namespace)
+	case policy.ModeLearning:
+		log.Info("Handling learning mode", "name", generator.Name, "namespace", generator.Namespace)
 		result, err = r.handleLearningMode(ctx, generator)
-	case "enforcing":
-		log.Info("Handling enforcing mode",
-			"name", generator.Name,
-			"namespace", generator.Namespace)
+	case policy.ModeEnforcing:
+		log.Info("Handling enforcing mode", "name", generator.Name, "namespace", generator.Namespace)
 		result, err = r.handleEnforcingMode(ctx, generator)
 	default:
-		log.Error(nil, "Invalid mode specified",
-			"mode", generator.Spec.Mode,
-			"name", generator.Name,
-			"namespace", generator.Namespace)
+		log.Error(nil, "Invalid mode specified", "mode", generator.Spec.Mode, "name", generator.Name)
 		return ctrl.Result{}, fmt.Errorf("invalid mode: %s", generator.Spec.Mode)
 	}
 
 	if err != nil {
-		log.Error(err, "Failed to handle mode",
-			"mode", generator.Spec.Mode,
-			"name", generator.Name,
-			"namespace", generator.Namespace)
+		log.Error(err, "failed to handle mode", "mode", generator.Spec.Mode, "name", generator.Name)
 		return ctrl.Result{}, err
 	}
 
@@ -160,42 +108,78 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 	return result, nil
 }
 
+// syncPhase updates the status phase to match the spec mode
+func (r *NetworkPolicyGeneratorReconciler) syncPhase(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) error {
+	log := log.FromContext(ctx)
+
+	oldPhase := generator.Status.Phase
+	switch generator.Spec.Mode {
+	case policy.ModeEnforcing:
+		generator.Status.Phase = policy.PhaseEnforcing
+	case policy.ModeLearning:
+		generator.Status.Phase = policy.PhaseLearning
+	}
+
+	if oldPhase != generator.Status.Phase {
+		log.Info("Phase changed", "oldPhase", oldPhase, "newPhase", generator.Status.Phase,
+			"name", generator.Name, "namespace", generator.Namespace)
+	}
+
+	if err := r.Status().Update(ctx, generator); err != nil {
+		log.Error(err, "failed to update status", "name", generator.Name, "phase", generator.Status.Phase)
+		return err
+	}
+
+	return nil
+}
+
+// handleDeletion handles the deletion of a NetworkPolicyGenerator with finalizer cleanup
+func (r *NetworkPolicyGeneratorReconciler) handleDeletion(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+	log.Info("Resource is being deleted", "name", generator.Name, "namespace", generator.Namespace)
+
+	if containsString(generator.ObjectMeta.Finalizers, finalizerName) {
+		if err := r.deleteNetworkPolicies(ctx, generator); err != nil {
+			log.Error(err, "failed to delete NetworkPolicies")
+			return ctrl.Result{}, err
+		}
+		generator.ObjectMeta.Finalizers = removeString(generator.ObjectMeta.Finalizers, finalizerName)
+		if err := r.Update(ctx, generator); err != nil {
+			log.Error(err, "failed to remove finalizer")
+			return ctrl.Result{}, err
+		}
+		log.Info("Successfully removed finalizer", "name", generator.Name, "namespace", generator.Namespace)
+	}
+	return ctrl.Result{}, nil
+}
+
 // deleteNetworkPolicies deletes all NetworkPolicies created by this generator
 func (r *NetworkPolicyGeneratorReconciler) deleteNetworkPolicies(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) error {
 	log := log.FromContext(ctx)
 
-	// Get list of namespaces to clean up
 	var namespacesToClean []string
-
-	if generator.Spec.Policy.Type == "allow" {
-		// For allow policy, clean up denied namespaces
+	if generator.Spec.Policy.Type == policy.PolicyTypeAllow {
 		namespacesToClean = generator.Spec.Policy.DeniedNamespaces
 	} else {
-		// For deny policy, clean up all namespaces
 		namespacesToClean = []string{generator.Namespace}
 	}
 
-	// Delete NetworkPolicy in each namespace
 	for _, ns := range namespacesToClean {
-		policy := &networkingv1.NetworkPolicy{
+		np := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      generator.Name + "-generated",
+				Name:      policy.PolicyName(generator.Name),
 				Namespace: ns,
 			},
 		}
 
-		if err := r.Delete(ctx, policy); err != nil {
+		if err := r.Delete(ctx, np); err != nil {
 			if !apierrors.IsNotFound(err) {
-				log.Error(err, "failed to delete NetworkPolicy",
-					"namespace", ns,
-					"name", policy.Name)
+				log.Error(err, "failed to delete NetworkPolicy", "namespace", ns, "name", np.Name)
 				return err
 			}
 		}
 
-		log.Info("Successfully deleted NetworkPolicy",
-			"namespace", ns,
-			"name", policy.Name)
+		log.Info("Successfully deleted NetworkPolicy", "namespace", ns, "name", np.Name)
 	}
 
 	return nil

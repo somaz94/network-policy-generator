@@ -20,7 +20,6 @@ type NamespaceRules struct {
 func GenerateNamespaceRules(namespaces []string) NamespaceRules {
 	var rules NamespaceRules
 
-	// Create a single rule with multiple namespace selectors
 	ingressRule := networkingv1.NetworkPolicyIngressRule{
 		From: make([]networkingv1.NetworkPolicyPeer, len(namespaces)),
 	}
@@ -29,20 +28,9 @@ func GenerateNamespaceRules(namespaces []string) NamespaceRules {
 	}
 
 	for i, ns := range namespaces {
-		ingressRule.From[i] = networkingv1.NetworkPolicyPeer{
-			NamespaceSelector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"kubernetes.io/metadata.name": ns,
-				},
-			},
-		}
-		egressRule.To[i] = networkingv1.NetworkPolicyPeer{
-			NamespaceSelector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"kubernetes.io/metadata.name": ns,
-				},
-			},
-		}
+		peer := namespacePeer(ns)
+		ingressRule.From[i] = peer
+		egressRule.To[i] = peer
 	}
 
 	rules.Ingress = []networkingv1.NetworkPolicyIngressRule{ingressRule}
@@ -54,50 +42,46 @@ func GenerateNamespaceRules(namespaces []string) NamespaceRules {
 func GenerateDeniedNamespaceRules(namespaces []string) NamespaceRules {
 	var rules NamespaceRules
 
-	if len(namespaces) > 0 {
-		ingressRule := networkingv1.NetworkPolicyIngressRule{
-			From: []networkingv1.NetworkPolicyPeer{
-				{
-					NamespaceSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "kubernetes.io/metadata.name",
-								Operator: metav1.LabelSelectorOpNotIn,
-								Values:   namespaces,
-							},
-						},
-					},
-				},
-			},
-		}
-		egressRule := networkingv1.NetworkPolicyEgressRule{
-			To: []networkingv1.NetworkPolicyPeer{
-				{
-					NamespaceSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "kubernetes.io/metadata.name",
-								Operator: metav1.LabelSelectorOpNotIn,
-								Values:   namespaces,
-							},
-						},
-					},
-				},
-			},
-		}
-		rules.Ingress = []networkingv1.NetworkPolicyIngressRule{ingressRule}
-		rules.Egress = []networkingv1.NetworkPolicyEgressRule{egressRule}
+	if len(namespaces) == 0 {
+		return rules
 	}
+
+	excludePeer := networkingv1.NetworkPolicyPeer{
+		NamespaceSelector: &metav1.LabelSelector{
+			MatchExpressions: []metav1.LabelSelectorRequirement{{
+				Key:      LabelK8sNamespace,
+				Operator: metav1.LabelSelectorOpNotIn,
+				Values:   namespaces,
+			}},
+		},
+	}
+
+	rules.Ingress = []networkingv1.NetworkPolicyIngressRule{{
+		From: []networkingv1.NetworkPolicyPeer{excludePeer},
+	}}
+	rules.Egress = []networkingv1.NetworkPolicyEgressRule{{
+		To: []networkingv1.NetworkPolicyPeer{excludePeer},
+	}}
 
 	return rules
 }
 
+// namespacePeer creates a NetworkPolicyPeer that matches a specific namespace
+func namespacePeer(namespace string) networkingv1.NetworkPolicyPeer {
+	return networkingv1.NetworkPolicyPeer{
+		NamespaceSelector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				LabelK8sNamespace: namespace,
+			},
+		},
+	}
+}
+
 // dnsEgressRule creates an egress rule that allows DNS resolution (UDP/TCP port 53)
-// This is essential for pods to resolve service names within the cluster
 func dnsEgressRule() networkingv1.NetworkPolicyEgressRule {
 	udp := v1.ProtocolUDP
 	tcp := v1.ProtocolTCP
-	dnsPort := intstr.FromInt32(53)
+	dnsPort := intstr.FromInt32(DNSPort)
 
 	return networkingv1.NetworkPolicyEgressRule{
 		Ports: []networkingv1.NetworkPolicyPort{
@@ -113,28 +97,24 @@ func GenerateGlobalRules(rules []securityv1.GlobalRule) ([]networkingv1.NetworkP
 	var egressRules []networkingv1.NetworkPolicyEgressRule
 
 	for _, rule := range rules {
-		if rule.Direction == "ingress" {
+		if rule.Direction == DirectionIngress {
 			ingressRules = append(ingressRules, networkingv1.NetworkPolicyIngressRule{
 				Ports: []networkingv1.NetworkPolicyPort{{
 					Protocol: (*v1.Protocol)(ptr.To(rule.Protocol)),
 					Port:     ptr.To(intstr.FromInt32(rule.Port)),
 				}},
 				From: []networkingv1.NetworkPolicyPeer{{
-					IPBlock: &networkingv1.IPBlock{
-						CIDR: "0.0.0.0/0",
-					},
+					IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},
 				}},
 			})
-		} else if rule.Direction == "egress" {
+		} else if rule.Direction == DirectionEgress {
 			egressRules = append(egressRules, networkingv1.NetworkPolicyEgressRule{
 				Ports: []networkingv1.NetworkPolicyPort{{
 					Protocol: (*v1.Protocol)(ptr.To(rule.Protocol)),
 					Port:     ptr.To(intstr.FromInt32(rule.Port)),
 				}},
 				To: []networkingv1.NetworkPolicyPeer{{
-					IPBlock: &networkingv1.IPBlock{
-						CIDR: "0.0.0.0/0",
-					},
+					IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},
 				}},
 			})
 		}

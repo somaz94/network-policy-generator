@@ -27,7 +27,7 @@ func (r *NetworkPolicyGeneratorReconciler) handleLearningMode(ctx context.Contex
 
 	// Learning mode initial setup (only once)
 	if generator.Status.Phase == "" || generator.Status.LastAnalyzed.IsZero() {
-		generator.Status.Phase = "Learning"
+		generator.Status.Phase = policy.PhaseLearning
 		generator.Status.LastAnalyzed = metav1.Now()
 		if err := r.Status().Update(ctx, generator); err != nil {
 			log.Error(err, "failed to update status")
@@ -47,13 +47,13 @@ func (r *NetworkPolicyGeneratorReconciler) handleLearningMode(ctx context.Contex
 			"elapsed", elapsed.String(),
 			"duration", generator.Spec.Duration.Duration)
 
-		generator.Status.Phase = "Enforcing"
+		generator.Status.Phase = policy.PhaseEnforcing
 		if err := r.Status().Update(ctx, generator); err != nil {
 			log.Error(err, "failed to update status to Enforcing")
 			return ctrl.Result{}, err
 		}
 
-		generator.Spec.Mode = "enforcing"
+		generator.Spec.Mode = policy.ModeEnforcing
 		if err := r.Update(ctx, generator); err != nil {
 			log.Error(err, "failed to update spec to Enforcing")
 			return ctrl.Result{}, err
@@ -69,13 +69,13 @@ func (r *NetworkPolicyGeneratorReconciler) handleLearningMode(ctx context.Contex
 func (r *NetworkPolicyGeneratorReconciler) handleEnforcingMode(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) (ctrl.Result, error) {
 	engineType := generator.Spec.PolicyEngine
 	if engineType == "" {
-		engineType = "kubernetes"
+		engineType = policy.EngineKubernetes
 	}
 
 	switch engineType {
-	case "kubernetes":
+	case policy.EngineKubernetes:
 		return r.handleKubernetesEnforcing(ctx, generator)
-	case "cilium":
+	case policy.EngineCilium:
 		return r.handleCiliumEnforcing(ctx, generator)
 	default:
 		return ctrl.Result{}, fmt.Errorf("unsupported policy engine: %s", engineType)
@@ -101,13 +101,7 @@ func (r *NetworkPolicyGeneratorReconciler) handleKubernetesEnforcing(ctx context
 		}
 	}
 
-	generator.Status.LastAnalyzed = metav1.Now()
-	if err := r.Status().Update(ctx, generator); err != nil {
-		log.Error(err, "failed to update generator status")
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+	return r.updateStatusAndRequeue(ctx, generator)
 }
 
 // handleCiliumEnforcing handles enforcing with CiliumNetworkPolicy
@@ -128,13 +122,32 @@ func (r *NetworkPolicyGeneratorReconciler) handleCiliumEnforcing(ctx context.Con
 		}
 	}
 
+	return r.updateStatusAndRequeue(ctx, generator)
+}
+
+// updateStatusAndRequeue updates the generator status and returns a requeue result
+func (r *NetworkPolicyGeneratorReconciler) updateStatusAndRequeue(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+
 	generator.Status.LastAnalyzed = metav1.Now()
 	if err := r.Status().Update(ctx, generator); err != nil {
 		log.Error(err, "failed to update generator status")
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: time.Minute * 5}, nil
+	return ctrl.Result{RequeueAfter: policy.DefaultRequeueInterval}, nil
+}
+
+// ownerReference creates a standard owner reference for the generator
+func ownerReference(generator *securityv1.NetworkPolicyGenerator) metav1.OwnerReference {
+	return metav1.OwnerReference{
+		APIVersion:         securityv1.GroupVersion.String(),
+		Kind:               "NetworkPolicyGenerator",
+		Name:               generator.Name,
+		UID:                generator.UID,
+		Controller:         ptr.To(true),
+		BlockOwnerDeletion: ptr.To(true),
+	}
 }
 
 // applyCiliumPolicy creates or updates a CiliumNetworkPolicy using unstructured client
@@ -150,21 +163,33 @@ func (r *NetworkPolicyGeneratorReconciler) applyCiliumPolicy(ctx context.Context
 	}
 
 	u.SetGroupVersionKind(ciliumGVK())
+	u.SetOwnerReferences([]metav1.OwnerReference{ownerReference(generator)})
 
-	// Set owner reference
-	u.SetOwnerReferences([]metav1.OwnerReference{{
-		APIVersion:         securityv1.GroupVersion.String(),
-		Kind:               "NetworkPolicyGenerator",
-		Name:               generator.Name,
-		UID:                generator.UID,
-		Controller:         ptr.To(true),
-		BlockOwnerDeletion: ptr.To(true),
-	}})
+	return r.createOrUpdate(ctx, u)
+}
 
-	// Try to get existing
+// applyNetworkPolicy creates or updates a NetworkPolicy
+func (r *NetworkPolicyGeneratorReconciler) applyNetworkPolicy(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, np *networkingv1.NetworkPolicy) error {
+	np.OwnerReferences = []metav1.OwnerReference{ownerReference(generator)}
+
+	existing := &networkingv1.NetworkPolicy{}
+	err := r.Get(ctx, client.ObjectKey{Name: np.Name, Namespace: np.Namespace}, existing)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+		return r.Create(ctx, np)
+	}
+
+	np.ResourceVersion = existing.ResourceVersion
+	return r.Update(ctx, np)
+}
+
+// createOrUpdate handles the get-then-create-or-update pattern for unstructured objects
+func (r *NetworkPolicyGeneratorReconciler) createOrUpdate(ctx context.Context, u *unstructured.Unstructured) error {
 	existing := &unstructured.Unstructured{}
-	existing.SetGroupVersionKind(ciliumGVK())
-	err = r.Get(ctx, client.ObjectKey{
+	existing.SetGroupVersionKind(u.GroupVersionKind())
+	err := r.Get(ctx, client.ObjectKey{
 		Name:      u.GetName(),
 		Namespace: u.GetNamespace(),
 	}, existing)
@@ -180,34 +205,10 @@ func (r *NetworkPolicyGeneratorReconciler) applyCiliumPolicy(ctx context.Context
 	return r.Update(ctx, u)
 }
 
-// applyNetworkPolicy creates or updates a NetworkPolicy
-func (r *NetworkPolicyGeneratorReconciler) applyNetworkPolicy(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, np *networkingv1.NetworkPolicy) error {
-	np.OwnerReferences = []metav1.OwnerReference{{
-		APIVersion:         securityv1.GroupVersion.String(),
-		Kind:               "NetworkPolicyGenerator",
-		Name:               generator.Name,
-		UID:                generator.UID,
-		Controller:         ptr.To(true),
-		BlockOwnerDeletion: ptr.To(true),
-	}}
-
-	existing := &networkingv1.NetworkPolicy{}
-	err := r.Get(ctx, client.ObjectKey{Name: np.Name, Namespace: np.Namespace}, existing)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return err
-		}
-		return r.Create(ctx, np)
-	}
-
-	np.ResourceVersion = existing.ResourceVersion
-	return r.Update(ctx, np)
-}
-
 func ciliumGVK() schema.GroupVersionKind {
 	return schema.GroupVersionKind{
-		Group:   "cilium.io",
-		Version: "v2",
-		Kind:    "CiliumNetworkPolicy",
+		Group:   policy.CiliumGroup,
+		Version: policy.CiliumVersion,
+		Kind:    policy.CiliumKind,
 	}
 }

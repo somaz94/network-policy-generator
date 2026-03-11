@@ -1,8 +1,6 @@
 package policy
 
 import (
-	"fmt"
-
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +35,7 @@ func NewKubernetesEngine() *KubernetesEngine {
 
 // EngineName returns "kubernetes"
 func (e *KubernetesEngine) EngineName() string {
-	return "kubernetes"
+	return EngineKubernetes
 }
 
 // GeneratePolicies implements PolicyEngine for standard Kubernetes NetworkPolicy
@@ -56,11 +54,32 @@ func (e *KubernetesEngine) GeneratePolicies(generator *securityv1.NetworkPolicyG
 
 // generateK8sPolicies contains the core Kubernetes NetworkPolicy generation logic
 func (e *KubernetesEngine) generateK8sPolicies(generator *securityv1.NetworkPolicyGenerator) ([]*networkingv1.NetworkPolicy, error) {
-	var policies []*networkingv1.NetworkPolicy
+	basePolicy := newBaseNetworkPolicy(generator)
 
-	basePolicy := &networkingv1.NetworkPolicy{
+	var policies []*networkingv1.NetworkPolicy
+	if generator.Spec.Policy.Type == PolicyTypeAllow {
+		policies = e.generateAllowPolicies(basePolicy, generator)
+	} else {
+		policies = e.generateDenyPolicies(basePolicy, generator)
+	}
+
+	// Add DNS egress rule to all policies
+	dnsRule := dnsEgressRule()
+	for _, p := range policies {
+		p.Spec.Egress = append(p.Spec.Egress, dnsRule)
+	}
+
+	// Apply global rules
+	e.applyGlobalRules(policies, generator.Spec.GlobalRules)
+
+	return policies, nil
+}
+
+// newBaseNetworkPolicy creates a base NetworkPolicy with common settings
+func newBaseNetworkPolicy(generator *securityv1.NetworkPolicyGenerator) *networkingv1.NetworkPolicy {
+	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-generated", generator.Name),
+			Name: PolicyName(generator.Name),
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion: generator.APIVersion,
@@ -79,107 +98,79 @@ func (e *KubernetesEngine) generateK8sPolicies(generator *securityv1.NetworkPoli
 			},
 		},
 	}
+}
 
-	if generator.Spec.Policy.Type == "allow" {
-		if len(generator.Spec.Policy.DeniedNamespaces) > 0 {
-			for _, ns := range generator.Spec.Policy.DeniedNamespaces {
-				policy := basePolicy.DeepCopy()
-				policy.Namespace = ns
+// generateAllowPolicies creates policies that deny traffic from specified namespaces
+func (e *KubernetesEngine) generateAllowPolicies(basePolicy *networkingv1.NetworkPolicy, generator *securityv1.NetworkPolicyGenerator) []*networkingv1.NetworkPolicy {
+	var policies []*networkingv1.NetworkPolicy
 
-				policy.Spec.Ingress = []networkingv1.NetworkPolicyIngressRule{{
-					From: []networkingv1.NetworkPolicyPeer{{
-						NamespaceSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{{
-								Key:      "kubernetes.io/metadata.name",
-								Operator: metav1.LabelSelectorOpNotIn,
-								Values:   generator.Spec.Policy.DeniedNamespaces,
-							}},
-						},
-					}},
-				}}
-				policy.Spec.Egress = []networkingv1.NetworkPolicyEgressRule{{
-					To: []networkingv1.NetworkPolicyPeer{{
-						NamespaceSelector: &metav1.LabelSelector{
-							MatchExpressions: []metav1.LabelSelectorRequirement{{
-								Key:      "kubernetes.io/metadata.name",
-								Operator: metav1.LabelSelectorOpNotIn,
-								Values:   generator.Spec.Policy.DeniedNamespaces,
-							}},
-						},
-					}},
-				}}
+	if len(generator.Spec.Policy.DeniedNamespaces) == 0 {
+		return policies
+	}
 
-				policies = append(policies, policy)
-			}
-		}
-	} else {
+	for _, ns := range generator.Spec.Policy.DeniedNamespaces {
 		policy := basePolicy.DeepCopy()
-		policy.Namespace = generator.Namespace
+		policy.Namespace = ns
 
-		if len(generator.Spec.Policy.AllowedNamespaces) > 0 {
-			var ingressPeers []networkingv1.NetworkPolicyPeer
-			var egressPeers []networkingv1.NetworkPolicyPeer
-
-			for _, ns := range generator.Spec.Policy.AllowedNamespaces {
-				peer := networkingv1.NetworkPolicyPeer{
-					NamespaceSelector: &metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/metadata.name": ns,
-						},
-					},
-				}
-				ingressPeers = append(ingressPeers, peer)
-				egressPeers = append(egressPeers, peer)
-			}
-
-			policy.Spec.Ingress = []networkingv1.NetworkPolicyIngressRule{{From: ingressPeers}}
-			policy.Spec.Egress = []networkingv1.NetworkPolicyEgressRule{{To: egressPeers}}
-		} else {
-			policy.Spec.Ingress = []networkingv1.NetworkPolicyIngressRule{}
-			policy.Spec.Egress = []networkingv1.NetworkPolicyEgressRule{}
-		}
+		rules := GenerateDeniedNamespaceRules(generator.Spec.Policy.DeniedNamespaces)
+		policy.Spec.Ingress = rules.Ingress
+		policy.Spec.Egress = rules.Egress
 
 		policies = append(policies, policy)
 	}
 
-	// DNS egress rule
-	dnsRule := dnsEgressRule()
-	for _, policy := range policies {
-		policy.Spec.Egress = append(policy.Spec.Egress, dnsRule)
+	return policies
+}
+
+// generateDenyPolicies creates policies that allow traffic only from specified namespaces
+func (e *KubernetesEngine) generateDenyPolicies(basePolicy *networkingv1.NetworkPolicy, generator *securityv1.NetworkPolicyGenerator) []*networkingv1.NetworkPolicy {
+	policy := basePolicy.DeepCopy()
+	policy.Namespace = generator.Namespace
+
+	if len(generator.Spec.Policy.AllowedNamespaces) > 0 {
+		rules := GenerateNamespaceRules(generator.Spec.Policy.AllowedNamespaces)
+		policy.Spec.Ingress = rules.Ingress
+		policy.Spec.Egress = rules.Egress
+	} else {
+		policy.Spec.Ingress = []networkingv1.NetworkPolicyIngressRule{}
+		policy.Spec.Egress = []networkingv1.NetworkPolicyEgressRule{}
 	}
 
-	// Global rules
-	if generator.Spec.GlobalRules != nil {
-		for _, policy := range policies {
-			for _, rule := range generator.Spec.GlobalRules {
-				if rule.Direction == "ingress" {
-					policy.Spec.Ingress = append(policy.Spec.Ingress, networkingv1.NetworkPolicyIngressRule{
-						Ports: []networkingv1.NetworkPolicyPort{{
-							Protocol: (*v1.Protocol)(&rule.Protocol),
-							Port:     ptr.To(intstr.FromInt32(rule.Port)),
-						}},
-						From: []networkingv1.NetworkPolicyPeer{{
-							IPBlock: &networkingv1.IPBlock{
-								CIDR: "0.0.0.0/0",
-							},
-						}},
-					})
-				} else if rule.Direction == "egress" {
-					policy.Spec.Egress = append(policy.Spec.Egress, networkingv1.NetworkPolicyEgressRule{
-						Ports: []networkingv1.NetworkPolicyPort{{
-							Protocol: (*v1.Protocol)(&rule.Protocol),
-							Port:     ptr.To(intstr.FromInt32(rule.Port)),
-						}},
-						To: []networkingv1.NetworkPolicyPeer{{
-							IPBlock: &networkingv1.IPBlock{
-								CIDR: "0.0.0.0/0",
-							},
-						}},
-					})
-				}
+	return []*networkingv1.NetworkPolicy{policy}
+}
+
+// applyGlobalRules adds global rules to all policies
+func (e *KubernetesEngine) applyGlobalRules(policies []*networkingv1.NetworkPolicy, globalRules []securityv1.GlobalRule) {
+	if globalRules == nil {
+		return
+	}
+
+	for _, p := range policies {
+		for _, rule := range globalRules {
+			if rule.Direction == DirectionIngress {
+				p.Spec.Ingress = append(p.Spec.Ingress, networkingv1.NetworkPolicyIngressRule{
+					Ports: []networkingv1.NetworkPolicyPort{{
+						Protocol: (*v1.Protocol)(&rule.Protocol),
+						Port:     ptr.To(intstr.FromInt32(rule.Port)),
+					}},
+					From: []networkingv1.NetworkPolicyPeer{{
+						IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},
+					}},
+				})
+			} else if rule.Direction == DirectionEgress {
+				p.Spec.Egress = append(p.Spec.Egress, networkingv1.NetworkPolicyEgressRule{
+					Ports: []networkingv1.NetworkPolicyPort{{
+						Protocol: (*v1.Protocol)(&rule.Protocol),
+						Port:     ptr.To(intstr.FromInt32(rule.Port)),
+					}},
+					To: []networkingv1.NetworkPolicyPeer{{
+						IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},
+					}},
+				})
 			}
 		}
 	}
-
-	return policies, nil
 }
+
+// Ensure KubernetesEngine implements PolicyEngine (compile-time check)
+var _ PolicyEngine = (*KubernetesEngine)(nil)

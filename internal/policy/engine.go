@@ -19,9 +19,9 @@ type PolicyEngine interface {
 // NewPolicyEngine creates the appropriate PolicyEngine based on the engine type
 func NewPolicyEngine(engineType string) (PolicyEngine, error) {
 	switch engineType {
-	case "kubernetes", "":
+	case EngineKubernetes, "":
 		return NewKubernetesEngine(), nil
-	case "cilium":
+	case EngineCilium:
 		return NewCiliumEngine(), nil
 	default:
 		return nil, fmt.Errorf("unsupported policy engine: %s", engineType)

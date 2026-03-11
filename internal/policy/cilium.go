@@ -1,7 +1,6 @@
 package policy
 
 import (
-	"fmt"
 	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +20,7 @@ func NewCiliumEngine() *CiliumEngine {
 
 // EngineName returns "cilium"
 func (e *CiliumEngine) EngineName() string {
-	return "cilium"
+	return EngineCilium
 }
 
 // GeneratePolicies generates CiliumNetworkPolicy objects
@@ -30,11 +29,11 @@ func (e *CiliumEngine) GeneratePolicies(generator *securityv1.NetworkPolicyGener
 
 	basePolicy := &CiliumNetworkPolicy{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "cilium.io/v2",
-			Kind:       "CiliumNetworkPolicy",
+			APIVersion: CiliumAPIVersion,
+			Kind:       CiliumKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-generated", generator.Name),
+			Name: PolicyName(generator.Name),
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion: generator.APIVersion,
@@ -50,122 +49,116 @@ func (e *CiliumEngine) GeneratePolicies(generator *securityv1.NetworkPolicyGener
 		},
 	}
 
-	if generator.Spec.Policy.Type == "allow" {
-		// Allow type: create policies in denied namespaces
-		if len(generator.Spec.Policy.DeniedNamespaces) > 0 {
-			for _, ns := range generator.Spec.Policy.DeniedNamespaces {
-				policy := basePolicy.DeepCopyObject().(*CiliumNetworkPolicy)
-				policy.Namespace = ns
-
-				// Deny ingress from denied namespaces
-				policy.Spec.IngressDeny = []CiliumIngressRule{{
-					FromEndpoints: e.buildDeniedNamespaceSelectors(generator.Spec.Policy.DeniedNamespaces),
-				}}
-				// Deny egress to denied namespaces
-				policy.Spec.EgressDeny = []CiliumEgressRule{{
-					ToEndpoints: e.buildDeniedNamespaceSelectors(generator.Spec.Policy.DeniedNamespaces),
-				}}
-
-				// Allow DNS egress (kube-dns)
-				policy.Spec.Egress = append(policy.Spec.Egress, e.dnsEgressRule())
-
-				policies = append(policies, policy)
-			}
-		}
+	if generator.Spec.Policy.Type == PolicyTypeAllow {
+		policies = e.generateAllowPolicies(basePolicy, generator)
 	} else {
-		// Deny type: create policy in current namespace
-		policy := basePolicy.DeepCopyObject().(*CiliumNetworkPolicy)
-		policy.Namespace = generator.Namespace
-
-		if len(generator.Spec.Policy.AllowedNamespaces) > 0 {
-			// Allow only specific namespaces
-			ingressEndpoints := e.buildAllowedNamespaceSelectors(generator.Spec.Policy.AllowedNamespaces)
-			egressEndpoints := e.buildAllowedNamespaceSelectors(generator.Spec.Policy.AllowedNamespaces)
-
-			policy.Spec.Ingress = []CiliumIngressRule{{
-				FromEndpoints: ingressEndpoints,
-			}}
-			policy.Spec.Egress = []CiliumEgressRule{{
-				ToEndpoints: egressEndpoints,
-			}}
-		}
-		// If no AllowedNamespaces, empty Ingress/Egress = deny all
-
-		// Add DNS egress
-		policy.Spec.Egress = append(policy.Spec.Egress, e.dnsEgressRule())
-
-		policies = append(policies, policy)
+		policies = e.generateDenyPolicies(basePolicy, generator)
 	}
 
-	// Apply global rules
-	if generator.Spec.GlobalRules != nil {
-		for _, policy := range policies {
-			ciliumPolicy := policy.(*CiliumNetworkPolicy)
-			for _, rule := range generator.Spec.GlobalRules {
-				portRule := CiliumPortRule{
-					Ports: []CiliumPort{{
-						Port:     strconv.Itoa(int(rule.Port)),
-						Protocol: rule.Protocol,
-					}},
-				}
-				if rule.Direction == "ingress" {
-					ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, CiliumIngressRule{
-						FromEntities: []string{"world"},
-						ToPorts:      []CiliumPortRule{portRule},
-					})
-				} else if rule.Direction == "egress" {
-					ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, CiliumEgressRule{
-						ToEntities: []string{"world"},
-						ToPorts:    []CiliumPortRule{portRule},
-					})
-				}
-			}
-		}
-	}
+	e.applyGlobalRules(policies, generator.Spec.GlobalRules)
 
 	return policies, nil
 }
 
-// buildAllowedNamespaceSelectors creates endpoint selectors for allowed namespaces
-func (e *CiliumEngine) buildAllowedNamespaceSelectors(namespaces []string) []CiliumEndpointSelector {
+// generateAllowPolicies creates policies for allow type (deny in specified namespaces)
+func (e *CiliumEngine) generateAllowPolicies(basePolicy *CiliumNetworkPolicy, generator *securityv1.NetworkPolicyGenerator) []runtime.Object {
+	var policies []runtime.Object
+
+	if len(generator.Spec.Policy.DeniedNamespaces) == 0 {
+		return policies
+	}
+
+	for _, ns := range generator.Spec.Policy.DeniedNamespaces {
+		policy := basePolicy.DeepCopyObject().(*CiliumNetworkPolicy)
+		policy.Namespace = ns
+
+		selectors := buildCiliumNamespaceSelectors(generator.Spec.Policy.DeniedNamespaces)
+		policy.Spec.IngressDeny = []CiliumIngressRule{{FromEndpoints: selectors}}
+		policy.Spec.EgressDeny = []CiliumEgressRule{{ToEndpoints: selectors}}
+		policy.Spec.Egress = append(policy.Spec.Egress, dnsEgressRuleCilium())
+
+		policies = append(policies, policy)
+	}
+
+	return policies
+}
+
+// generateDenyPolicies creates policies for deny type (allow only specified namespaces)
+func (e *CiliumEngine) generateDenyPolicies(basePolicy *CiliumNetworkPolicy, generator *securityv1.NetworkPolicyGenerator) []runtime.Object {
+	policy := basePolicy.DeepCopyObject().(*CiliumNetworkPolicy)
+	policy.Namespace = generator.Namespace
+
+	if len(generator.Spec.Policy.AllowedNamespaces) > 0 {
+		selectors := buildCiliumNamespaceSelectors(generator.Spec.Policy.AllowedNamespaces)
+		policy.Spec.Ingress = []CiliumIngressRule{{FromEndpoints: selectors}}
+		policy.Spec.Egress = []CiliumEgressRule{{ToEndpoints: selectors}}
+	}
+
+	policy.Spec.Egress = append(policy.Spec.Egress, dnsEgressRuleCilium())
+
+	return []runtime.Object{policy}
+}
+
+// applyGlobalRules adds global rules to all policies
+func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, globalRules []securityv1.GlobalRule) {
+	if globalRules == nil {
+		return
+	}
+
+	for _, obj := range policies {
+		ciliumPolicy := obj.(*CiliumNetworkPolicy)
+		for _, rule := range globalRules {
+			portRule := CiliumPortRule{
+				Ports: []CiliumPort{{
+					Port:     strconv.Itoa(int(rule.Port)),
+					Protocol: rule.Protocol,
+				}},
+			}
+			if rule.Direction == DirectionIngress {
+				ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, CiliumIngressRule{
+					FromEntities: []string{EntityWorld},
+					ToPorts:      []CiliumPortRule{portRule},
+				})
+			} else if rule.Direction == DirectionEgress {
+				ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, CiliumEgressRule{
+					ToEntities: []string{EntityWorld},
+					ToPorts:    []CiliumPortRule{portRule},
+				})
+			}
+		}
+	}
+}
+
+// buildCiliumNamespaceSelectors creates endpoint selectors for namespaces
+func buildCiliumNamespaceSelectors(namespaces []string) []CiliumEndpointSelector {
 	selectors := make([]CiliumEndpointSelector, len(namespaces))
 	for i, ns := range namespaces {
 		selectors[i] = CiliumEndpointSelector{
 			MatchLabels: map[string]string{
-				"k8s:io.kubernetes.pod.namespace": ns,
+				LabelCiliumPodNS: ns,
 			},
 		}
 	}
 	return selectors
 }
 
-// buildDeniedNamespaceSelectors creates endpoint selectors for denied namespaces
-func (e *CiliumEngine) buildDeniedNamespaceSelectors(namespaces []string) []CiliumEndpointSelector {
-	selectors := make([]CiliumEndpointSelector, len(namespaces))
-	for i, ns := range namespaces {
-		selectors[i] = CiliumEndpointSelector{
-			MatchLabels: map[string]string{
-				"k8s:io.kubernetes.pod.namespace": ns,
-			},
-		}
-	}
-	return selectors
-}
-
-// dnsEgressRule creates a Cilium egress rule allowing DNS resolution
-func (e *CiliumEngine) dnsEgressRule() CiliumEgressRule {
+// dnsEgressRuleCilium creates a Cilium egress rule allowing DNS resolution
+func dnsEgressRuleCilium() CiliumEgressRule {
 	return CiliumEgressRule{
 		ToEndpoints: []CiliumEndpointSelector{{
 			MatchLabels: map[string]string{
-				"k8s:io.kubernetes.pod.namespace": "kube-system",
-				"k8s:k8s-app":                     "kube-dns",
+				LabelCiliumPodNS:  LabelCiliumKubeSystem,
+				LabelCiliumK8sApp: LabelCiliumKubeDNSApp,
 			},
 		}},
 		ToPorts: []CiliumPortRule{{
 			Ports: []CiliumPort{
-				{Port: "53", Protocol: "UDP"},
-				{Port: "53", Protocol: "TCP"},
+				{Port: DNSPortStr, Protocol: "UDP"},
+				{Port: DNSPortStr, Protocol: "TCP"},
 			},
 		}},
 	}
 }
+
+// Ensure CiliumEngine implements PolicyEngine (compile-time check)
+var _ PolicyEngine = (*CiliumEngine)(nil)
