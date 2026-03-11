@@ -85,6 +85,10 @@ ENGINE ?= all
 test-integration: ## Run integration tests against a real cluster. Use ENGINE=kubernetes|cilium|all (default: all)
 	@./hack/test-integration.sh $(ENGINE)
 
+.PHONY: test-helm
+test-helm: ## Run Helm chart tests (lint, template, install, upgrade, policy tests). Use ENGINE=kubernetes|cilium|all (default: all)
+	@./hack/test-helm.sh $(ENGINE)
+
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
 	$(GOLANGCI_LINT) run

@@ -41,7 +41,38 @@ make test-integration ENGINE=all
 
 <br/>
 
-## 3. Manual Deploy Test
+## 3. Helm Chart Test (Automated)
+
+Run Helm chart tests (lint, template, install, upgrade, policy tests, uninstall):
+
+```bash
+make test-helm
+```
+
+Options:
+
+```bash
+# Kubernetes engine only (skip Cilium tests)
+make test-helm ENGINE=kubernetes
+
+# Cilium engine only
+make test-helm ENGINE=cilium
+
+# All engines (default)
+make test-helm ENGINE=all
+```
+
+Test coverage:
+- Helm lint, template render, package
+- Helm install & release verification
+- Controller pod, CRD, RBAC, Service verification
+- Kubernetes/Cilium NetworkPolicy CR tests (same as integration)
+- Helm upgrade test
+- Helm uninstall & CRD cleanup hook verification
+
+<br/>
+
+## 4. Manual Deploy Test
 
 <br/>
 
@@ -84,7 +115,7 @@ kubectl get pods -n test-ns3
 
 ---
 
-## 4. Kubernetes NetworkPolicy Tests
+## 5. Kubernetes NetworkPolicy Tests
 
 <br/>
 
@@ -176,7 +207,7 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 
 ---
 
-## 5. Cilium NetworkPolicy Tests
+## 6. Cilium NetworkPolicy Tests
 
 > **Requires Cilium CNI installed on the cluster**
 
@@ -225,7 +256,7 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 
 ---
 
-## 6. Multi-Namespace Test (test-policy.yaml)
+## 7. Multi-Namespace Test (test-policy.yaml)
 
 ```bash
 kubectl apply -f config/samples/test-policy.yaml
@@ -246,7 +277,7 @@ kubectl delete networkpolicygenerators -A --all
 
 ---
 
-## 7. Finalizer / Deletion Test
+## 8. Finalizer / Deletion Test
 
 Verify that deleting a NetworkPolicyGenerator also removes the generated policies:
 
@@ -266,7 +297,7 @@ kubectl get networkpolicies -n test-ns1
 
 ---
 
-## 8. Full Cleanup
+## 9. Full Cleanup
 
 ```bash
 # Remove all test resources

@@ -247,37 +247,36 @@ kubectl apply -f https://raw.githubusercontent.com/<org>/network-policy-generato
 
 <br/>
 
-## Testing with Sample Resources
+## Testing
 
-The project includes test resources to validate network policy generation:
+```sh
+# Unit tests
+make test
+
+# Integration tests (deploy to real cluster and test all sample policies)
+make test-integration                      # All engines
+make test-integration ENGINE=kubernetes    # Kubernetes only
+make test-integration ENGINE=cilium        # Cilium only
+
+# Helm chart tests (lint, install, upgrade, policy tests, uninstall)
+make test-helm                             # All engines
+make test-helm ENGINE=kubernetes           # Kubernetes only
+make test-helm ENGINE=cilium               # Cilium only
+```
+
+For detailed manual test steps and sample descriptions, see [Test Guide](config/samples/TEST_README.md).
 
 <br/>
 
-### Test Environment Setup
+## Helm Chart
+
+Install via Helm:
+
 ```sh
-# Create test namespaces
-kubectl create namespace test-ns1
-kubectl create namespace test-ns2  
-kubectl create namespace test-ns3
-
-# Apply test pods and services
-kubectl apply -f config/samples/test.yaml
-
-# Apply network policy generators
-kubectl apply -f config/samples/security_v1_networkpolicygenerator-deny.yaml
-kubectl apply -f config/samples/test-policy.yaml
+helm install network-policy-generator ./helm/network-policy-generator
 ```
 
-<br/>
-
-### Validate Network Policies
-```sh
-# Check generated network policies
-kubectl get networkpolicy -A
-
-# Test connectivity between pods
-kubectl exec -n test-ns1 test-pod1 -- curl test-service2.test-ns2.svc.cluster.local
-```
+For full Helm chart documentation, see [Helm README](helm/README.md).
 
 <br/>
 

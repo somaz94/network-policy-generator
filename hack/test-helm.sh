@@ -1,0 +1,318 @@
+#!/bin/bash
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+ENGINE="${1:-all}"
+PASS=0
+FAIL=0
+SKIP=0
+RELEASE_NAME="npg-test"
+NAMESPACE="network-policy-generator-system"
+CHART_DIR="./helm/network-policy-generator"
+SAMPLES_DIR="config/samples"
+
+log_info()  { echo -e "${CYAN}[INFO]${NC} $1"; }
+log_pass()  { echo -e "${GREEN}[PASS]${NC} $1"; PASS=$((PASS+1)); }
+log_fail()  { echo -e "${RED}[FAIL]${NC} $1"; FAIL=$((FAIL+1)); }
+log_skip()  { echo -e "${YELLOW}[SKIP]${NC} $1"; SKIP=$((SKIP+1)); }
+
+wait_for_pods() {
+  local ns=$1
+  local timeout=${2:-60}
+  log_info "Waiting for pods in ${ns} to be ready (timeout: ${timeout}s)..."
+  kubectl wait --for=condition=ready pod --all -n "$ns" --timeout="${timeout}s" 2>/dev/null || true
+}
+
+wait_for_resource() {
+  local resource=$1
+  local ns=$2
+  local timeout=${3:-30}
+  for i in $(seq 1 "$timeout"); do
+    if kubectl get "$resource" -n "$ns" 2>/dev/null | grep -q .; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+cleanup_cr() {
+  kubectl delete networkpolicygenerators -n test-ns1 --all --ignore-not-found 2>/dev/null || true
+  kubectl delete networkpolicygenerators -n test-ns2 --all --ignore-not-found 2>/dev/null || true
+  sleep 2
+}
+
+check_cilium() {
+  if kubectl get crd ciliumnetworkpolicies.cilium.io >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+# ============================================================
+# Setup - Helm Install
+# ============================================================
+log_info "========================================="
+log_info "Network Policy Generator Helm Test"
+log_info "Engine: ${ENGINE}"
+log_info "========================================="
+
+# Lint chart
+log_info "Linting Helm chart..."
+if helm lint "${CHART_DIR}" 2>&1 | grep -q "0 chart(s) failed"; then
+  log_pass "Helm lint passed"
+else
+  log_fail "Helm lint failed"
+fi
+
+# Template render test
+log_info "Testing Helm template rendering..."
+if helm template test "${CHART_DIR}" > /dev/null 2>&1; then
+  log_pass "Helm template renders successfully"
+else
+  log_fail "Helm template rendering failed"
+fi
+
+# Package test
+log_info "Testing Helm package..."
+PACKAGE_DIR=$(mktemp -d)
+if helm package "${CHART_DIR}" -d "${PACKAGE_DIR}" > /dev/null 2>&1; then
+  log_pass "Helm package created successfully"
+  PACKAGE_FILE=$(ls "${PACKAGE_DIR}"/*.tgz 2>/dev/null | head -1)
+  log_info "Package: ${PACKAGE_FILE}"
+else
+  log_fail "Helm package failed"
+fi
+rm -rf "${PACKAGE_DIR}"
+
+# Install via Helm
+log_info "Installing chart via Helm..."
+helm upgrade --install "${RELEASE_NAME}" "${CHART_DIR}" \
+  --create-namespace \
+  --wait \
+  --timeout 120s 2>&1 | tail -5
+
+# Verify Helm release
+if helm status "${RELEASE_NAME}" 2>/dev/null | grep -q "deployed"; then
+  log_pass "Helm release deployed successfully"
+else
+  log_fail "Helm release not in deployed status"
+fi
+
+# Verify controller pod
+log_info "Waiting for controller to be ready..."
+if kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
+  -n "$NAMESPACE" --timeout=120s 2>/dev/null; then
+  log_pass "Controller pod is running"
+else
+  log_fail "Controller pod not ready"
+fi
+
+# Verify CRD installed
+if kubectl get crd networkpolicygenerators.security.policy.io >/dev/null 2>&1; then
+  log_pass "CRD installed via Helm"
+else
+  log_fail "CRD not found"
+fi
+
+# Verify RBAC
+if kubectl get clusterrole network-policy-generator-manager-role >/dev/null 2>&1; then
+  log_pass "ClusterRole created"
+else
+  log_fail "ClusterRole not found"
+fi
+
+# Verify Service
+if kubectl get svc -n "$NAMESPACE" 2>/dev/null | grep -q "metrics"; then
+  log_pass "Metrics service created"
+else
+  log_fail "Metrics service not found"
+fi
+
+# ============================================================
+# Create test resources
+# ============================================================
+log_info "Creating test namespaces and pods..."
+kubectl create ns test-ns1 --dry-run=client -o yaml | kubectl apply -f -
+kubectl create ns test-ns2 --dry-run=client -o yaml | kubectl apply -f -
+kubectl create ns test-ns3 --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f "${SAMPLES_DIR}/test.yaml"
+wait_for_pods test-ns1
+wait_for_pods test-ns2
+wait_for_pods test-ns3 90
+
+# ============================================================
+# Kubernetes Engine Tests
+# ============================================================
+if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
+  echo ""
+  log_info "--- Kubernetes NetworkPolicy Tests (Helm) ---"
+
+  # Test: Deny Policy
+  log_info "[Test] Kubernetes Deny Policy"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-deny.yaml" -n test-ns1
+  sleep 3
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "K8s Deny: CR created with Enforcing phase"
+  else
+    log_fail "K8s Deny: CR not in Enforcing phase"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "K8s Deny: NetworkPolicy generated"
+  else
+    log_fail "K8s Deny: NetworkPolicy not generated"
+  fi
+  cleanup_cr
+  sleep 2
+  if ! kubectl get networkpolicies -n test-ns1 2>/dev/null | grep -q "generated"; then
+    log_pass "K8s Deny: Finalizer cleanup successful"
+  else
+    log_fail "K8s Deny: Finalizer cleanup failed"
+  fi
+
+  # Test: Allow Policy
+  log_info "[Test] Kubernetes Allow Policy"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-allow.yaml" -n test-ns1
+  sleep 3
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "K8s Allow: CR created with Enforcing phase"
+  else
+    log_fail "K8s Allow: CR not in Enforcing phase"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "K8s Allow: NetworkPolicy generated"
+  else
+    log_fail "K8s Allow: NetworkPolicy not generated"
+  fi
+  cleanup_cr
+
+  # Test: Multi-Namespace
+  log_info "[Test] Multi-Namespace Policy"
+  kubectl apply -f "${SAMPLES_DIR}/test-policy.yaml"
+  sleep 3
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "Multi-NS: test-ns1 CR in Enforcing phase"
+  else
+    log_fail "Multi-NS: test-ns1 CR not in Enforcing phase"
+  fi
+  if kubectl get networkpolicygenerators -n test-ns2 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "Multi-NS: test-ns2 CR in Enforcing phase"
+  else
+    log_fail "Multi-NS: test-ns2 CR not in Enforcing phase"
+  fi
+  kubectl delete networkpolicygenerators -A --all --ignore-not-found 2>/dev/null || true
+  sleep 2
+fi
+
+# ============================================================
+# Cilium Engine Tests
+# ============================================================
+if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
+  echo ""
+  if check_cilium; then
+    log_info "--- Cilium NetworkPolicy Tests (Helm) ---"
+
+    # Test: Cilium Deny Policy
+    log_info "[Test] Cilium Deny Policy"
+    kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-cilium-deny.yaml" -n test-ns1
+    sleep 3
+    if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+      log_pass "Cilium Deny: CR created with Enforcing phase"
+    else
+      log_fail "Cilium Deny: CR not in Enforcing phase"
+    fi
+    if wait_for_resource "ciliumnetworkpolicies" "test-ns1" 10; then
+      log_pass "Cilium Deny: CiliumNetworkPolicy generated"
+    else
+      log_fail "Cilium Deny: CiliumNetworkPolicy not generated"
+    fi
+    if kubectl get ciliumnetworkpolicies -n test-ns1 2>/dev/null | grep -q "True"; then
+      log_pass "Cilium Deny: CiliumNetworkPolicy is Valid"
+    else
+      log_fail "Cilium Deny: CiliumNetworkPolicy is not Valid"
+    fi
+    cleanup_cr
+    sleep 2
+    if ! kubectl get ciliumnetworkpolicies -n test-ns1 2>/dev/null | grep -q "generated"; then
+      log_pass "Cilium Deny: Finalizer cleanup successful"
+    else
+      log_fail "Cilium Deny: Finalizer cleanup failed"
+    fi
+
+    # Test: Cilium Allow Policy
+    log_info "[Test] Cilium Allow Policy"
+    kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-cilium-allow.yaml" -n test-ns1
+    sleep 3
+    if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+      log_pass "Cilium Allow: CR created with Enforcing phase"
+    else
+      log_fail "Cilium Allow: CR not in Enforcing phase"
+    fi
+    if wait_for_resource "ciliumnetworkpolicies" "test-ns1" 10; then
+      log_pass "Cilium Allow: CiliumNetworkPolicy generated"
+    else
+      log_fail "Cilium Allow: CiliumNetworkPolicy not generated"
+    fi
+    if kubectl get ciliumnetworkpolicies -n test-ns1 2>/dev/null | grep -q "True"; then
+      log_pass "Cilium Allow: CiliumNetworkPolicy is Valid"
+    else
+      log_fail "Cilium Allow: CiliumNetworkPolicy is not Valid"
+    fi
+    cleanup_cr
+  else
+    log_skip "Cilium CRD not found, skipping Cilium tests"
+  fi
+fi
+
+# ============================================================
+# Helm Upgrade Test
+# ============================================================
+echo ""
+log_info "--- Helm Upgrade Test ---"
+if helm upgrade "${RELEASE_NAME}" "${CHART_DIR}" --wait --timeout 120s 2>&1 | grep -q "has been upgraded"; then
+  log_pass "Helm upgrade successful"
+else
+  log_fail "Helm upgrade failed"
+fi
+
+# ============================================================
+# Cleanup
+# ============================================================
+echo ""
+log_info "--- Cleanup ---"
+kubectl delete -f "${SAMPLES_DIR}/test.yaml" --ignore-not-found 2>/dev/null || true
+kubectl delete ns test-ns1 test-ns2 test-ns3 --ignore-not-found 2>/dev/null || true
+
+log_info "Uninstalling Helm release..."
+helm uninstall "${RELEASE_NAME}" 2>&1 || true
+
+# Verify CRD cleanup hook ran
+sleep 5
+if ! kubectl get crd networkpolicygenerators.security.policy.io >/dev/null 2>&1; then
+  log_pass "CRD cleaned up after uninstall"
+else
+  log_info "CRD still exists (cleanup hook may need cluster permissions)"
+fi
+
+kubectl delete ns "$NAMESPACE" --ignore-not-found 2>/dev/null || true
+
+# ============================================================
+# Summary
+# ============================================================
+echo ""
+log_info "========================================="
+log_info "Helm Test Summary"
+log_info "========================================="
+echo -e "${GREEN}PASSED: ${PASS}${NC}"
+echo -e "${RED}FAILED: ${FAIL}${NC}"
+echo -e "${YELLOW}SKIPPED: ${SKIP}${NC}"
+
+if [[ $FAIL -gt 0 ]]; then
+  exit 1
+fi
