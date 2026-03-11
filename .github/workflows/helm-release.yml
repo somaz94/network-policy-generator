@@ -55,12 +55,19 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
+          # Move helm-repo to temp to avoid checkout conflicts
+          cp -r helm-repo/ /tmp/helm-repo-staging/
+
           if git rev-parse --verify gh-pages >/dev/null 2>&1; then
             git checkout gh-pages
           else
             git checkout --orphan gh-pages
             git rm -rf .
           fi
+
+          # Restore helm-repo from temp
+          rm -rf helm-repo/
+          cp -r /tmp/helm-repo-staging/ helm-repo/
 
           find . -maxdepth 1 ! -name '.' ! -name '.git' ! -name 'helm-repo' -exec rm -rf {} +
           git add helm-repo/
