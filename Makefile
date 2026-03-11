@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= somaz940/network-policy-generator:v0.0.2
+IMG ?= somaz940/network-policy-generator:v0.0.3
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31.0
 
@@ -79,6 +79,11 @@ test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated 
 		exit 1; \
 	}
 	go test ./test/e2e/ -v -ginkgo.v
+
+ENGINE ?= all
+.PHONY: test-integration
+test-integration: ## Run integration tests against a real cluster. Use ENGINE=kubernetes|cilium|all (default: all)
+	@./hack/test-integration.sh $(ENGINE)
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
