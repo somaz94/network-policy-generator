@@ -1,4 +1,30 @@
-# More info: https://docs.docker.com/engine/reference/builder/#dockerignore-file
-# Ignore build and test binaries.
+# Build and test binaries
 bin/
 
+# Version control
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# Documentation
+docs/
+*.md
+LICENSE
+
+# Helm charts
+helm/
+
+# Config (not needed for binary build)
+config/
+hack/
+
+# IDE
+.vscode/
+.idea/
+
+# Test files
+*_test.go
+test/
+cover.out
