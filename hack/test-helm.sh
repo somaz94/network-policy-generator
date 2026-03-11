@@ -133,6 +133,10 @@ else
 fi
 rm -rf "${PACKAGE_DIR}"
 
+# Clean up any previous failed release
+helm uninstall "${RELEASE_NAME}" --no-hooks 2>/dev/null || true
+kubectl delete crd networkpolicygenerators.security.policy.io --ignore-not-found 2>/dev/null || true
+
 # Install via Helm
 log_info "Installing chart via Helm..."
 helm upgrade --install "${RELEASE_NAME}" "${CHART_DIR}" \
