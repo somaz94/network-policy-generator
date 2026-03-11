@@ -1,0 +1,22 @@
+apiVersion: v2
+name: network-policy-generator
+description: A Helm chart for Network Policy Generator - Kubernetes Operator that automatically generates NetworkPolicy and CiliumNetworkPolicy resources
+type: application
+version: 0.1.0
+appVersion: "v0.0.3"
+kubeVersion: ">=1.16.0-0"
+keywords:
+  - kubernetes
+  - networkpolicy
+  - cilium
+  - security
+  - operator
+home: https://github.com/somaz94/network-policy-generator
+sources:
+  - https://github.com/somaz94/network-policy-generator
+maintainers:
+  - name: somaz94
+    url: https://github.com/somaz94
+annotations:
+  "helm.sh/hook": "pre-install,pre-upgrade"
+  "helm.sh/hook-weight": "-5"

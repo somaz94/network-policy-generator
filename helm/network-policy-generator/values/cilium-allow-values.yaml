@@ -1,0 +1,6 @@
+# Example: Cilium Allow Policy
+# helm install npg ./helm/network-policy-generator -f ./helm/network-policy-generator/values/cilium-allow-values.yaml
+
+image:
+  repository: somaz940/network-policy-generator
+  tag: v0.0.3

@@ -1,0 +1,57 @@
+namespace: network-policy-generator-system
+
+image:
+  repository: somaz940/network-policy-generator
+  tag: v0.0.3
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: network-policy-generator-controller-manager
+
+podSecurityContext:
+  runAsNonRoot: true
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - "ALL"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+controller:
+  metricsBindAddress: ":8443"
+  healthProbeBindAddress: ":8081"
+  leaderElect: true
+
+service:
+  type: ClusterIP
+  port: 8443
+
+probes:
+  liveness:
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    port: 8081
+  readiness:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    port: 8081
+
+rbac:
+  enabled: true
+
+crds:
+  enabled: true
+  cleanup: true
+
+metrics:
+  enabled: true
+  port: 8443

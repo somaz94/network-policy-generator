@@ -1,0 +1,153 @@
+{{- if .Values.rbac.enabled }}
+---
+# Leader Election Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-leader-election-role
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+# Leader Election RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-leader-election-rolebinding
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "network-policy-generator.name" . }}-leader-election-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.serviceAccount.name }}
+    namespace: {{ .Values.namespace }}
+---
+# Manager ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-manager-role
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["cilium.io"]
+    resources: ["ciliumnetworkpolicies"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["security.policy.io"]
+    resources: ["networkpolicygenerators"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["security.policy.io"]
+    resources: ["networkpolicygenerators/finalizers"]
+    verbs: ["update"]
+  - apiGroups: ["security.policy.io"]
+    resources: ["networkpolicygenerators/status"]
+    verbs: ["get", "patch", "update"]
+---
+# Manager ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-manager-rolebinding
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "network-policy-generator.name" . }}-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.serviceAccount.name }}
+    namespace: {{ .Values.namespace }}
+---
+# Metrics Auth ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-metrics-auth-role
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
+---
+# Metrics Auth ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-metrics-auth-rolebinding
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "network-policy-generator.name" . }}-metrics-auth-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.serviceAccount.name }}
+    namespace: {{ .Values.namespace }}
+---
+# Metrics Reader ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-metrics-reader
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+rules:
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+---
+# NetworkPolicyGenerator Editor ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-editor-role
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["security.policy.io"]
+    resources: ["networkpolicygenerators"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["security.policy.io"]
+    resources: ["networkpolicygenerators/status"]
+    verbs: ["get"]
+---
+# NetworkPolicyGenerator Viewer ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-viewer-role
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["security.policy.io"]
+    resources: ["networkpolicygenerators"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["security.policy.io"]
+    resources: ["networkpolicygenerators/status"]
+    verbs: ["get"]
+{{- end }}

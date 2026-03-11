@@ -1,0 +1,35 @@
+Network Policy Generator has been installed!
+
+1. Check the controller is running:
+   kubectl get pods -n {{ .Values.namespace }}
+
+2. Create a NetworkPolicyGenerator resource:
+   kubectl apply -f - <<EOF
+   apiVersion: security.policy.io/v1
+   kind: NetworkPolicyGenerator
+   metadata:
+     name: example
+     namespace: default
+   spec:
+     mode: "enforcing"
+     policyEngine: "kubernetes"
+     policy:
+       type: "deny"
+       allowedNamespaces:
+         - "kube-system"
+     globalRules:
+       - type: "allow"
+         port: 53
+         protocol: UDP
+         direction: "egress"
+   EOF
+
+3. Check generated policies:
+   # Kubernetes NetworkPolicy
+   kubectl get networkpolicies -A
+
+   # Cilium NetworkPolicy (if using cilium engine)
+   kubectl get ciliumnetworkpolicies -A
+
+4. View controller logs:
+   kubectl logs -n {{ .Values.namespace }} deployment/{{ include "network-policy-generator.name" . }}-controller-manager

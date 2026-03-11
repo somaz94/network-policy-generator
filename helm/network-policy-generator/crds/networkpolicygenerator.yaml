@@ -1,0 +1,178 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.4
+  name: networkpolicygenerators.security.policy.io
+spec:
+  group: security.policy.io
+  names:
+    kind: NetworkPolicyGenerator
+    listKind: NetworkPolicyGeneratorList
+    plural: networkpolicygenerators
+    singular: networkpolicygenerator
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .status.lastAnalyzed
+      name: LastAnalyzed
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: NetworkPolicyGenerator is the Schema for the networkpolicygenerators
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: NetworkPolicyGeneratorSpec defines the desired state of NetworkPolicyGenerator
+            properties:
+              duration:
+                description: Duration specifies how long to analyze traffic in learning
+                  mode
+                type: string
+              globalRules:
+                description: GlobalRules defines the global traffic rules
+                items:
+                  description: GlobalRule defines a single traffic rule
+                  properties:
+                    direction:
+                      description: Direction of the traffic (ingress/egress)
+                      enum:
+                      - ingress
+                      - egress
+                      type: string
+                    port:
+                      description: Port number
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    protocol:
+                      description: Protocol (TCP/UDP)
+                      enum:
+                      - TCP
+                      - UDP
+                      type: string
+                    type:
+                      description: Type defines whether to allow or deny this rule
+                      enum:
+                      - allow
+                      - deny
+                      type: string
+                  required:
+                  - direction
+                  - port
+                  - protocol
+                  - type
+                  type: object
+                type: array
+              mode:
+                description: 'Mode specifies the operation mode: "learning" or "enforcing"'
+                enum:
+                - learning
+                - enforcing
+                type: string
+              policy:
+                description: Policy defines the main policy configuration
+                properties:
+                  allowedNamespaces:
+                    description: AllowedNamespaces lists namespaces that are allowed
+                      when policy type is deny
+                    items:
+                      type: string
+                    type: array
+                  deniedNamespaces:
+                    description: DeniedNamespaces lists namespaces that are denied
+                      when policy type is allow
+                    items:
+                      type: string
+                    type: array
+                  type:
+                    description: Type defines the policy type (allow/deny)
+                    enum:
+                    - allow
+                    - deny
+                    type: string
+                required:
+                - type
+                type: object
+              policyEngine:
+                default: kubernetes
+                description: |-
+                  PolicyEngine specifies the CNI-specific policy engine to use
+                  "kubernetes" generates standard NetworkPolicy (networking.k8s.io/v1)
+                  "cilium" generates CiliumNetworkPolicy (cilium.io/v2)
+                enum:
+                - kubernetes
+                - cilium
+                type: string
+            required:
+            - policy
+            type: object
+          status:
+            description: NetworkPolicyGeneratorStatus defines the observed state of
+              NetworkPolicyGenerator
+            properties:
+              lastAnalyzed:
+                description: LastAnalyzed is the timestamp of when traffic was last
+                  analyzed
+                format: date-time
+                type: string
+              observedTraffic:
+                description: ObservedTraffic contains the list of observed traffic
+                  patterns
+                items:
+                  description: TrafficFlow represents a single observed traffic pattern
+                  properties:
+                    destNamespace:
+                      description: Destination namespace and pod information
+                      type: string
+                    destPod:
+                      type: string
+                    port:
+                      format: int32
+                      type: integer
+                    protocol:
+                      description: Protocol and port information
+                      type: string
+                    sourceNamespace:
+                      description: Source namespace and pod information
+                      type: string
+                    sourcePod:
+                      type: string
+                  type: object
+                type: array
+              phase:
+                description: 'Phase represents the current phase of the generator:
+                  Learning, Analyzing, or Enforcing'
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

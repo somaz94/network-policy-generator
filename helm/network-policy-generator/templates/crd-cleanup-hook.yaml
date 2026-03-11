@@ -1,0 +1,28 @@
+{{- if and .Values.crds.enabled .Values.crds.cleanup }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "network-policy-generator.name" . }}-crd-cleanup
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "network-policy-generator.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: crd-cleanup
+          image: bitnami/kubectl:latest
+          command:
+            - kubectl
+            - delete
+            - crd
+            - networkpolicygenerators.security.policy.io
+            - --ignore-not-found
+      restartPolicy: Never
+  backoffLimit: 1
+{{- end }}
