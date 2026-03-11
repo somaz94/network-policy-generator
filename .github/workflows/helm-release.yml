@@ -57,6 +57,7 @@ jobs:
 
           # Move helm-repo to temp to avoid checkout conflicts
           cp -r helm-repo/ /tmp/helm-repo-staging/
+          rm -rf helm-repo/
 
           if git rev-parse --verify gh-pages >/dev/null 2>&1; then
             git checkout gh-pages
