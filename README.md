@@ -23,60 +23,116 @@ This tool helps security teams and cluster administrators implement network segm
 
 <br/>
 
-## Getting Started
+## Installation
 
 <br/>
 
 ### Prerequisites
-- go version v1.22.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+- Kubernetes v1.16+
+- kubectl v1.11.3+
+- For Cilium policies: Cilium CNI installed on the cluster
 
 <br/>
 
-### To Deploy on the cluster
+### Option 1: Helm (Recommended)
 
-**Build and push your image to the location specified by `IMG`:**
+```bash
+# Add the Helm repository
+helm repo add network-policy-generator https://somaz94.github.io/network-policy-generator/helm-repo
+helm repo update
 
-```sh
-make docker-build docker-push IMG=<some-registry>/network-policy-generator:tag
+# Install with default values
+helm install npg network-policy-generator/network-policy-generator
+
+# Or install with custom values
+helm install npg network-policy-generator/network-policy-generator \
+  --set image.tag=v0.1.0 \
+  --set crds.cleanup=false \
+  --namespace npg-system --create-namespace
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don't work.
+For full Helm chart options, see [Helm README](helm/README.md).
 
-**Install the CRDs into the cluster:**
+<br/>
 
-```sh
+### Option 2: kubectl apply (Quick Install)
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/somaz94/network-policy-generator/main/dist/install.yaml
+```
+
+> **NOTE**: Generate `dist/install.yaml` first if it doesn't exist:
+> ```bash
+> make build-installer IMG=somaz940/network-policy-generator:v0.1.0
+> ```
+
+<br/>
+
+### Option 3: Build from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/somaz94/network-policy-generator.git
+cd network-policy-generator
+
+# Install CRDs
 make install
+
+# Deploy the controller
+make deploy IMG=somaz940/network-policy-generator:v0.1.0
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+<br/>
 
-```sh
-make deploy IMG=<some-registry>/network-policy-generator:tag
+### Verify Installation
+
+```bash
+# Check the controller is running
+kubectl get pods -n network-policy-generator-system
+
+# Check CRDs are installed
+kubectl get crd networkpolicygenerators.security.policy.io
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+<br/>
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/samples:
+## Quick Start
 
-```sh
-kubectl apply -k config/samples/
+After installation, create a `NetworkPolicyGenerator` resource:
+
+```bash
+# Apply a sample policy
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-deny.yaml
+
+# Check the status
+kubectl get networkpolicygenerator
+
+# View generated NetworkPolicies
+kubectl get networkpolicy -A
 ```
 
 Available sample configurations:
 - `security_v1_networkpolicygenerator-allow.yaml`: Allow-based policy example
-- `security_v1_networkpolicygenerator-deny.yaml`: Deny-based policy example  
+- `security_v1_networkpolicygenerator-deny.yaml`: Deny-based policy example
 - `security_v1_networkpolicygenerator.yaml`: Learning mode example
 - `test-policy.yaml`: Namespace-specific policy examples
 - `test.yaml`: Test pods and services for validation
 
->**NOTE**: The samples include test namespaces (test-ns1, test-ns2, test-ns3) and sample pods for testing the network policies.
+<br/>
+
+### Uninstall
+
+```bash
+# Helm
+helm uninstall npg
+
+# kubectl
+kubectl delete -f https://raw.githubusercontent.com/somaz94/network-policy-generator/main/dist/install.yaml
+
+# From source
+make undeploy
+make uninstall
+```
 
 <br/>
 
@@ -201,52 +257,6 @@ kubectl get networkpolicygenerator <name> -o yaml
 
 <br/>
 
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-<br/>
-
-## Project Distribution
-
-Following are the steps to build the installer and distribute this project to users.
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/network-policy-generator:tag
-```
-
-NOTE: The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without
-its dependencies.
-
-2. Using the installer
-
-Users can just run kubectl apply -f <URL for YAML BUNDLE> to install the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/network-policy-generator/<tag or branch>/dist/install.yaml
-```
-
-<br/>
-
 ## Testing
 
 ```sh
@@ -265,18 +275,6 @@ make test-helm ENGINE=cilium               # Cilium only
 ```
 
 For detailed manual test steps and sample descriptions, see [Test Guide](config/samples/TEST_README.md).
-
-<br/>
-
-## Helm Chart
-
-Install via Helm:
-
-```sh
-helm install network-policy-generator ./helm/network-policy-generator
-```
-
-For full Helm chart documentation, see [Helm README](helm/README.md).
 
 <br/>
 

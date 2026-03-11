@@ -81,6 +81,48 @@ spec:
 
 <br/>
 
+## Upgrade
+
+```bash
+helm repo update
+helm upgrade npg network-policy-generator/network-policy-generator
+```
+
+<br/>
+
+## Custom Values Example
+
+Create a `custom-values.yaml`:
+
+```yaml
+image:
+  tag: v0.1.0
+
+namespace: custom-namespace
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+controller:
+  leaderElect: true
+
+crds:
+  cleanup: false  # Keep CRDs on uninstall
+```
+
+Install with custom values:
+
+```bash
+helm install npg network-policy-generator/network-policy-generator -f custom-values.yaml
+```
+
+<br/>
+
 ## Uninstall
 
 ```bash
