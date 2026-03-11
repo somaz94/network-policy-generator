@@ -19,6 +19,7 @@ This tool helps security teams and cluster administrators implement network segm
 - Providing data-driven policy recommendations based on real traffic
 - Supporting both permissive (allow-based) and restrictive (deny-based) policy approaches
 - Enabling gradual transition from learning to enforcement phases
+- Supporting multiple CNI backends via `policyEngine` field (`kubernetes`, `cilium`)
 
 <br/>
 
