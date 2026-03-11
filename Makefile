@@ -3,10 +3,10 @@ IMG ?= somaz940/network-policy-generator:v0.1.1
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31.0
 
-# Ensure the Go toolchain matches the version in go.mod to avoid covdata errors
-# when the system Go differs from the module's required version
-GO_VERSION := $(shell grep '^go ' go.mod | awk '{print $$2}')
-export GOTOOLCHAIN := go$(GO_VERSION)
+# Pin Go toolchain to the version specified in go.mod to avoid covdata errors
+# from automatic toolchain switching
+GO_MOD_VERSION := $(shell grep '^go ' go.mod | awk '{print $$2}')
+export GOTOOLCHAIN := go$(GO_MOD_VERSION)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))

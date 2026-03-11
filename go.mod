@@ -1,6 +1,6 @@
 module github.com/somaz94/network-policy-generator
 
-go 1.22.0
+go 1.26.0
 
 require (
 	github.com/onsi/ginkgo/v2 v2.19.0
