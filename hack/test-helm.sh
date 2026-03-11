@@ -55,6 +55,48 @@ check_cilium() {
   return 1
 }
 
+# curl_test <from_pod> <from_ns> <target_svc> <target_ns> <expect: pass|fail> <test_label>
+# Uses ClusterIP to bypass DNS. Retries up to 5 times with 5s intervals for policy propagation.
+curl_test() {
+  local pod=$1 ns=$2 svc=$3 target_ns=$4 expect=$5 label=$6
+  local retries=5
+  local exit_code=0
+
+  # Resolve ClusterIP to bypass DNS resolution issues
+  local cluster_ip
+  cluster_ip=$(kubectl get svc "$svc" -n "$target_ns" -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
+  if [[ -z "$cluster_ip" ]]; then
+    log_fail "${label}: could not get ClusterIP for ${svc} in ${target_ns}"
+    return
+  fi
+  local url="http://${cluster_ip}:80"
+
+  for attempt in $(seq 1 "$retries"); do
+    exit_code=0
+    kubectl exec "$pod" -n "$ns" -- curl -s --max-time 5 -o /dev/null -w "%{http_code}" "$url" >/dev/null 2>&1 || exit_code=$?
+
+    if [[ "$expect" == "pass" && $exit_code -eq 0 ]]; then
+      log_pass "${label}: curl SUCCEEDED as expected"
+      return
+    elif [[ "$expect" == "fail" && $exit_code -ne 0 ]]; then
+      log_pass "${label}: curl BLOCKED as expected"
+      return
+    fi
+
+    if [[ $attempt -lt $retries ]]; then
+      log_info "${label}: curl attempt ${attempt}/${retries} - retrying in 5s..."
+      sleep 5
+    fi
+  done
+
+  # All retries exhausted
+  if [[ "$expect" == "pass" ]]; then
+    log_fail "${label}: curl FAILED (expected success, exit_code=${exit_code})"
+  else
+    log_fail "${label}: curl SUCCEEDED (expected block)"
+  fi
+}
+
 # ============================================================
 # Setup - Helm Install
 # ============================================================
@@ -106,6 +148,13 @@ else
 fi
 
 # Verify controller pod
+log_info "Waiting for controller pod to exist..."
+for i in $(seq 1 30); do
+  if kubectl get pod -l control-plane=controller-manager -n "$NAMESPACE" 2>/dev/null | grep -q .; then
+    break
+  fi
+  sleep 2
+done
 log_info "Waiting for controller to be ready..."
 if kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
   -n "$NAMESPACE" --timeout=120s 2>/dev/null; then
@@ -168,6 +217,8 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   else
     log_fail "K8s Deny: NetworkPolicy not generated"
   fi
+  # Curl: test-ns3 -> test-ns1 should be BLOCKED (test-ns3 not in allowedNamespaces)
+  curl_test test-client test-ns3 test-service1 test-ns1 fail "K8s Deny"
   cleanup_cr
   sleep 2
   if ! kubectl get networkpolicies -n test-ns1 2>/dev/null | grep -q "generated"; then
@@ -190,6 +241,8 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   else
     log_fail "K8s Allow: NetworkPolicy not generated"
   fi
+  # Curl: test-ns3 -> test-ns1 should SUCCEED (allow type uses NotIn, test-ns3 not in deniedNamespaces)
+  curl_test test-client test-ns3 test-service1 test-ns1 pass "K8s Allow"
   cleanup_cr
 
   # Test: Multi-Namespace
@@ -237,6 +290,8 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
     else
       log_fail "Cilium Deny: CiliumNetworkPolicy is not Valid"
     fi
+    # Curl: test-ns3 -> test-ns1 should SUCCEED (test-ns3 in allowedNamespaces)
+    curl_test test-client test-ns3 test-service1 test-ns1 pass "Cilium Deny"
     cleanup_cr
     sleep 2
     if ! kubectl get ciliumnetworkpolicies -n test-ns1 2>/dev/null | grep -q "generated"; then
@@ -248,7 +303,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
     # Test: Cilium Allow Policy
     log_info "[Test] Cilium Allow Policy"
     kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-cilium-allow.yaml" -n test-ns1
-    sleep 3
+    sleep 5
     if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
       log_pass "Cilium Allow: CR created with Enforcing phase"
     else
@@ -264,6 +319,9 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
     else
       log_fail "Cilium Allow: CiliumNetworkPolicy is not Valid"
     fi
+    # Curl: test-ns3 -> test-ns1 should be BLOCKED (CiliumNetworkPolicy default-deny applies
+    # when any rule exists; test-ns3 is cluster-internal and does not match "world" entity)
+    curl_test test-client test-ns3 test-service1 test-ns1 fail "Cilium Allow"
     cleanup_cr
   else
     log_skip "Cilium CRD not found, skipping Cilium tests"
