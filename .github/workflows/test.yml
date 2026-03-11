@@ -21,3 +21,12 @@ jobs:
         run: |
           go mod tidy
           make test
+
+      - name: Verify manifests and generated code
+        run: |
+          make manifests generate
+          git diff --exit-code -- config/ api/
+          if [ $? -ne 0 ]; then
+            echo "::error::Generated manifests or deepcopy are out of date. Run 'make manifests generate' and commit the changes."
+            exit 1
+          fi
