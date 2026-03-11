@@ -1,15 +1,18 @@
 
 ### Bug Fixes
-- add dedicated RBAC for CRD cleanup hook job by @somaz94
+- use --no-hooks for helm uninstall in test to prevent hang by @somaz94
+- clean up failed release before helm install in test by @somaz94
+- set GOTOOLCHAIN from go.mod to fix covdata errors by @somaz94
 
 ### Chore
-- bump version to v0.1.1 by @somaz94
+- upgrade Go to 1.26, use go-version-file in CI workflows by @somaz94
+- bump version to v0.1.2 by @somaz94
+- sync workflow/Makefile parity with other repos by @somaz94
 
 ### Documentation
-- add user-facing installation guide with Helm, kubectl, and source options by @somaz94
-- add version bump checklist by @somaz94
-- consolidate documentation into docs/ directory by @somaz94
-- add TROUBLESHOOTING.md and CONTRIBUTING.md, migrate golangci-lint to v2 by @somaz94
-- docs/VERSION_BUMP.md by @somaz94
+- update changelog by @actions-user
 
-**Full Changelog**: https://github.com/somaz94/network-policy-generator/compare/v0.1.0...v0.1.1
+### Performance
+- optimize Dockerfile with build cache and smaller binary by @somaz94
+
+**Full Changelog**: https://github.com/somaz94/network-policy-generator/compare/v0.1.1...v0.1.2
