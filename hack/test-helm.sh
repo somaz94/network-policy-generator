@@ -348,14 +348,14 @@ kubectl delete -f "${SAMPLES_DIR}/test.yaml" --ignore-not-found 2>/dev/null || t
 kubectl delete ns test-ns1 test-ns2 test-ns3 --ignore-not-found 2>/dev/null || true
 
 log_info "Uninstalling Helm release..."
-helm uninstall "${RELEASE_NAME}" 2>&1 || true
+# Delete CRD manually before uninstall to avoid cleanup hook hang
+kubectl delete crd networkpolicygenerators.security.policy.io --ignore-not-found 2>/dev/null || true
+helm uninstall "${RELEASE_NAME}" --no-hooks 2>&1 || true
 
-# Verify CRD cleanup hook ran
-sleep 5
 if ! kubectl get crd networkpolicygenerators.security.policy.io >/dev/null 2>&1; then
   log_pass "CRD cleaned up after uninstall"
 else
-  log_info "CRD still exists (cleanup hook may need cluster permissions)"
+  log_info "CRD still exists"
 fi
 
 kubectl delete ns "$NAMESPACE" --ignore-not-found 2>/dev/null || true
