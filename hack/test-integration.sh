@@ -115,8 +115,11 @@ for i in $(seq 1 30); do
   fi
   sleep 2
 done
-kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
-  -n "$NAMESPACE" --timeout=120s
+if ! kubectl wait --for=condition=ready pod -l control-plane=controller-manager \
+  -n "$NAMESPACE" --timeout=180s; then
+  log_fail "Failed to deploy controller in ${NAMESPACE}"
+  exit 1
+fi
 
 # Create test namespaces
 log_info "Creating test namespaces and pods..."
