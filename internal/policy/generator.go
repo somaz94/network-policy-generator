@@ -115,6 +115,12 @@ func (g *Generator) GenerateNetworkPolicies(generator *securityv1.NetworkPolicyG
 		policies = append(policies, policy)
 	}
 
+	// DNS egress 규칙 추가 (kube-dns/coredns 접근 허용)
+	dnsEgressRule := dnsEgressRule()
+	for _, policy := range policies {
+		policy.Spec.Egress = append(policy.Spec.Egress, dnsEgressRule)
+	}
+
 	// Global Rules 적용
 	if generator.Spec.GlobalRules != nil {
 		for _, policy := range policies {
@@ -150,79 +156,4 @@ func (g *Generator) GenerateNetworkPolicies(generator *securityv1.NetworkPolicyG
 	}
 
 	return policies, nil
-}
-
-func (g *Generator) Generate(generator *securityv1.NetworkPolicyGenerator) *networkingv1.NetworkPolicy {
-	return g.generateNetworkPolicy(generator)
-}
-
-func (g *Generator) generateNetworkPolicy(generator *securityv1.NetworkPolicyGenerator) *networkingv1.NetworkPolicy {
-	np := &networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      generator.Name + "-generated",
-			Namespace: generator.Namespace,
-		},
-		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{},
-			PolicyTypes: []networkingv1.PolicyType{
-				networkingv1.PolicyTypeIngress,
-				networkingv1.PolicyTypeEgress,
-			},
-		},
-	}
-
-	// allowedNamespaces가 비어있으면 모든 트래픽 차단
-	if len(generator.Spec.Policy.AllowedNamespaces) == 0 {
-		// 빈 ingress/egress 규칙으로 모든 트래픽 차단
-		np.Spec.Ingress = []networkingv1.NetworkPolicyIngressRule{}
-		np.Spec.Egress = []networkingv1.NetworkPolicyEgressRule{}
-		return np
-	}
-
-	// allowedNamespaces가 있는 경우에만 ingress/egress 규칙 추가
-	var ingressRules []networkingv1.NetworkPolicyIngressRule
-	var egressRules []networkingv1.NetworkPolicyEgressRule
-
-	// 허용된 namespace에 대한 규칙 추가
-	namespaceRule := networkingv1.NetworkPolicyIngressRule{
-		From: []networkingv1.NetworkPolicyPeer{
-			{
-				NamespaceSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						"kubernetes.io/metadata.name": generator.Spec.Policy.AllowedNamespaces[0],
-					},
-				},
-			},
-		},
-	}
-	ingressRules = append(ingressRules, namespaceRule)
-
-	// Global rules 처리
-	if len(generator.Spec.GlobalRules) > 0 {
-		for _, rule := range generator.Spec.GlobalRules {
-			if rule.Direction == "ingress" {
-				globalRule := networkingv1.NetworkPolicyIngressRule{
-					From: []networkingv1.NetworkPolicyPeer{
-						{
-							IPBlock: &networkingv1.IPBlock{
-								CIDR: "0.0.0.0/0",
-							},
-						},
-					},
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Port:     &intstr.IntOrString{Type: intstr.Int, IntVal: rule.Port},
-							Protocol: (*v1.Protocol)(&rule.Protocol),
-						},
-					},
-				}
-				ingressRules = append(ingressRules, globalRule)
-			}
-		}
-	}
-
-	np.Spec.Ingress = ingressRules
-	np.Spec.Egress = egressRules
-
-	return np
 }

@@ -92,6 +92,21 @@ func GenerateDeniedNamespaceRules(namespaces []string) NamespaceRules {
 	return rules
 }
 
+// dnsEgressRule creates an egress rule that allows DNS resolution (UDP/TCP port 53)
+// This is essential for pods to resolve service names within the cluster
+func dnsEgressRule() networkingv1.NetworkPolicyEgressRule {
+	udp := v1.ProtocolUDP
+	tcp := v1.ProtocolTCP
+	dnsPort := intstr.FromInt32(53)
+
+	return networkingv1.NetworkPolicyEgressRule{
+		Ports: []networkingv1.NetworkPolicyPort{
+			{Protocol: &udp, Port: &dnsPort},
+			{Protocol: &tcp, Port: &dnsPort},
+		},
+	}
+}
+
 // GenerateGlobalRules generates rules based on global configuration
 func GenerateGlobalRules(rules []securityv1.GlobalRule) ([]networkingv1.NetworkPolicyIngressRule, []networkingv1.NetworkPolicyEgressRule) {
 	var ingressRules []networkingv1.NetworkPolicyIngressRule

@@ -102,7 +102,8 @@ func TestGenerator(t *testing.T) {
 		policy := policies[0]
 		assert.NotNil(t, policy)
 		assert.Len(t, policy.Spec.Ingress, 1)
-		assert.Len(t, policy.Spec.Egress, 1)
+		// 1 global egress rule + 1 DNS egress rule
+		assert.Len(t, policy.Spec.Egress, 2)
 	})
 
 	t.Run("Generate Policy with Allowed Namespaces", func(t *testing.T) {
