@@ -2,6 +2,8 @@
 
 When releasing a new version, update the following files:
 
+<br/>
+
 ## Required Files
 
 | File | Field | Example |
@@ -12,6 +14,8 @@ When releasing a new version, update the following files:
 | `helm/network-policy-generator/values.yaml` | `image.tag` | `v0.1.1` |
 | `config/manager/kustomization.yaml` | `newTag` | `v0.1.1` |
 
+<br/>
+
 ## Documentation Files
 
 | File | Location | Note |
@@ -19,6 +23,8 @@ When releasing a new version, update the following files:
 | `README.md` | Installation examples (`--set image.tag=`, `make deploy IMG=`, `make build-installer IMG=`) | Update version in code blocks |
 | `helm/README.md` | Configuration table (`image.tag` default) | Update default value |
 | `helm/README.md` | Custom Values Example (`tag:`) | Update example version |
+
+<br/>
 
 ## Release Steps
 
