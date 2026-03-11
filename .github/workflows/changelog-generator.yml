@@ -27,14 +27,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get latest tag
-        id: get_first_tag
+      - name: Get tags
+        id: get_tags
         run: |
           latest_tag="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n1)"
+          first_tag="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | head -n1)"
           echo "LATEST_TAG=${latest_tag}" >> "$GITHUB_ENV"
-          echo "FIRST_TAG=v0.0.1" >> "$GITHUB_ENV"
+          echo "FIRST_TAG=${first_tag}" >> "$GITHUB_ENV"
 
       - name: Generate changelog
+        if: env.FIRST_TAG != ''
         uses: janheinrichmerker/action-github-changelog-generator@v2.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
