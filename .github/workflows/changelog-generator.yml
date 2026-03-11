@@ -46,6 +46,7 @@ jobs:
           excludeTagsRegex: "^v[0-9]$"
 
       - name: Git Commit and Push
+        if: env.FIRST_TAG != ''
         uses: somaz94/go-git-commit-action@v1
         with:
           branch: main
