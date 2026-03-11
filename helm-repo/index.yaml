@@ -6,10 +6,10 @@ entries:
       helm.sh/hook-weight: "-5"
     apiVersion: v2
     appVersion: v0.1.0
-    created: "2026-03-11T06:24:44.571105219Z"
+    created: "2026-03-11T06:52:12.077944934Z"
     description: A Helm chart for Network Policy Generator - Kubernetes Operator that
       automatically generates NetworkPolicy and CiliumNetworkPolicy resources
-    digest: a024e553f0d05227c9c8ac1d87c1e71c6f2978c6aee50b1169d4955a1a72a104
+    digest: 7c1de9ef3eb58dd8e64817849540bec9d015b63bf27e9cb622fa0c31f8d22903
     home: https://github.com/somaz94/network-policy-generator
     keywords:
     - kubernetes
@@ -28,4 +28,4 @@ entries:
     urls:
     - https://somaz94.github.io/network-policy-generator/helm-repo/network-policy-generator-0.1.0.tgz
     version: 0.1.0
-generated: "2026-03-11T06:24:44.569903808Z"
+generated: "2026-03-11T06:52:12.077152374Z"
