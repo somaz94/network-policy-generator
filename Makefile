@@ -231,6 +231,14 @@ golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
+# k8s binaries for envtest
+.PHONY: envtest-bins
+envtest-bins: envtest ## Download k8s binaries for envtest
+	$(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN)
+
+.PHONY: install-tools
+install-tools: kustomize controller-gen envtest golangci-lint envtest-bins ## Install all required tools
+
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary
 # $2 - package url which can be installed

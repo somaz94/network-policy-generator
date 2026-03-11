@@ -2,7 +2,11 @@ name: E2E Tests
 
 on:
   push:
+    paths-ignore:
+      - '.github/workflows/**'
+      - '**/*.md'
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test-e2e:
@@ -15,7 +19,8 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '~1.22'
+          go-version-file: 'go.mod'
+          cache: true
 
       - name: Install the latest version of kind
         run: |

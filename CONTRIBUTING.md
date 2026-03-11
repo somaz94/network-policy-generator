@@ -8,7 +8,7 @@ Thank you for your interest in contributing to Network Policy Generator!
 
 ### Prerequisites
 
-- Go 1.22+
+- Go 1.26+
 - Docker 17.03+
 - kubectl v1.11.3+
 - Access to a Kubernetes cluster (Kind recommended for local development)
