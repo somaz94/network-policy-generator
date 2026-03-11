@@ -20,58 +20,47 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Get previous tag
-        id: previoustag
+      - name: Get previous semver tag
+        id: prev_tag
         run: |
           CURRENT_TAG="${{ github.ref_name }}"
           PREVIOUS_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | grep -B1 "^${CURRENT_TAG}$" | head -n1)
           if [ "$PREVIOUS_TAG" = "$CURRENT_TAG" ]; then
             PREVIOUS_TAG=""
           fi
-          echo "PREVIOUS_TAG=${PREVIOUS_TAG}" >> "$GITHUB_ENV"
-          echo "CURRENT_TAG=${CURRENT_TAG}" >> "$GITHUB_ENV"
+          echo "tag=${PREVIOUS_TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: Generate changelog for release
-        if: env.PREVIOUS_TAG != ''
-        id: changelog
-        uses: janheinrichmerker/action-github-changelog-generator@v2.4
+      - name: Generate changelog with git-cliff
+        uses: orhun/git-cliff-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          futureRelease: ${{ env.CURRENT_TAG }}
-          sinceTag: ${{ env.PREVIOUS_TAG }}
-          unreleased: false
-          excludeTagsRegex: "^v[0-9]$"
-          output: RELEASE.md
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: RELEASE.md
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Read changelog
-        id: read_changelog
+      - name: Append full changelog link
+        if: steps.prev_tag.outputs.tag != ''
         run: |
-          if [ -f RELEASE.md ]; then
-            echo "changelog<<EOF" >> $GITHUB_OUTPUT
-            cat RELEASE.md >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            rm -rf RELEASE.md
-          else
-            echo "changelog=Initial release ${CURRENT_TAG}" >> $GITHUB_OUTPUT
-          fi
+          echo "" >> RELEASE.md
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.prev_tag.outputs.tag }}...${{ github.ref_name }}" >> RELEASE.md
 
       - name: Create GitHub release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: RELEASE.md
           draft: false
           prerelease: false
-          body: ${{ steps.read_changelog.outputs.changelog }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update major version tag
         env:
           CURRENT_TAG: ${{ github.ref_name }}
           MAJOR_VERSION: ${{ github.ref_name }}
         run: |
-          git checkout main
+          git switch main
           git fetch --tags
           MAJOR_VERSION="${CURRENT_TAG%%.*}"
           COMMIT_SHA=$(git rev-parse ${{ github.sha }})
