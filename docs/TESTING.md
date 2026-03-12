@@ -18,7 +18,28 @@ make test
 
 <br/>
 
-## 2. Integration Test (Automated)
+## 2. End-to-End Tests (e2e)
+
+Run end-to-end tests using [Kind](https://kind.sigs.k8s.io/) (Kubernetes in Docker):
+
+```bash
+make test-e2e
+```
+
+Prerequisites:
+- Kind must be installed
+- A Kind cluster must be running (`kind create cluster`)
+
+This target runs `manifests`, `generate`, `fmt`, and `vet` before executing the e2e test suite located in `test/e2e/` using Ginkgo.
+
+> **NOTE**: You can skip Prometheus and CertManager installation by setting:
+> ```bash
+> PROMETHEUS_INSTALL_SKIP=true CERT_MANAGER_INSTALL_SKIP=true make test-e2e
+> ```
+
+<br/>
+
+## 3. Integration Test (Automated)
 
 Run all sample tests automatically:
 
@@ -41,7 +62,7 @@ make test-integration ENGINE=all
 
 <br/>
 
-## 3. Helm Chart Test (Automated)
+## 4. Helm Chart Test (Automated)
 
 Run Helm chart tests (lint, template, install, upgrade, policy tests, uninstall):
 
@@ -72,7 +93,7 @@ Test coverage:
 
 <br/>
 
-## 4. Manual Deploy Test
+## 5. Manual Deploy Test
 
 <br/>
 
@@ -115,7 +136,7 @@ kubectl get pods -n test-ns3
 
 ---
 
-## 5. Kubernetes NetworkPolicy Tests
+## 6. Kubernetes NetworkPolicy Tests
 
 <br/>
 
@@ -207,7 +228,7 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 
 ---
 
-## 6. Cilium NetworkPolicy Tests
+## 7. Cilium NetworkPolicy Tests
 
 > **Requires Cilium CNI installed on the cluster**
 
@@ -256,7 +277,7 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 
 ---
 
-## 7. Multi-Namespace Test (test-policy.yaml)
+## 8. Multi-Namespace Test (test-policy.yaml)
 
 ```bash
 kubectl apply -f config/samples/test-policy.yaml
@@ -277,7 +298,7 @@ kubectl delete networkpolicygenerators -A --all
 
 ---
 
-## 8. Finalizer / Deletion Test
+## 9. Finalizer / Deletion Test
 
 Verify that deleting a NetworkPolicyGenerator also removes the generated policies:
 
@@ -297,7 +318,7 @@ kubectl get networkpolicies -n test-ns1
 
 ---
 
-## 9. Full Cleanup
+## 10. Full Cleanup
 
 ```bash
 # Remove all test resources

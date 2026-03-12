@@ -61,11 +61,6 @@ For full Helm chart options, see [Helm README](docs/HELM.md).
 kubectl apply -f https://raw.githubusercontent.com/somaz94/network-policy-generator/main/dist/install.yaml
 ```
 
-> **NOTE**: Generate `dist/install.yaml` first if it doesn't exist:
-> ```bash
-> make build-installer IMG=somaz940/network-policy-generator:v0.1.2
-> ```
-
 <br/>
 
 ### Option 3: Build from Source
