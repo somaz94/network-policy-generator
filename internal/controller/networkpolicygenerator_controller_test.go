@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
@@ -153,7 +154,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				}, generator); err != nil {
 					return false
 				}
-				return containsString(generator.ObjectMeta.Finalizers, finalizerName)
+				return controllerutil.ContainsFinalizer(generator, finalizerName)
 			}, timeout, interval).Should(BeTrue())
 
 			By("Deleting the resource")

@@ -329,22 +329,6 @@ var _ = Describe("Mode Handlers", func() {
 		})
 	})
 
-	Context("Helper Functions", func() {
-		It("removeString should return same slice when string not found", func() {
-			input := []string{"a", "b", "c"}
-			result := removeString(input, "d")
-			Expect(result).To(Equal(input))
-		})
-
-		It("containsString should return false for empty slice", func() {
-			Expect(containsString([]string{}, "test")).To(BeFalse())
-		})
-
-		It("containsString should return true for existing string", func() {
-			Expect(containsString([]string{"a", "b"}, "b")).To(BeTrue())
-		})
-	})
-
 	Context("Reconcile Edge Cases", func() {
 		It("should handle not-found resource gracefully", func() {
 			result, err := reconciler.Reconcile(ctx, ctrl.Request{

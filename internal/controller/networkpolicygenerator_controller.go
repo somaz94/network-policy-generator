@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
@@ -69,9 +70,9 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	// Add finalizer if it doesn't exist
-	if !containsString(generator.ObjectMeta.Finalizers, finalizerName) {
+	if !controllerutil.ContainsFinalizer(generator, finalizerName) {
 		log.Info("Adding finalizer", "name", generator.Name, "namespace", generator.Namespace)
-		generator.ObjectMeta.Finalizers = append(generator.ObjectMeta.Finalizers, finalizerName)
+		controllerutil.AddFinalizer(generator, finalizerName)
 		if err := r.Update(ctx, generator); err != nil {
 			log.Error(err, "failed to add finalizer")
 			return ctrl.Result{}, err
@@ -138,12 +139,12 @@ func (r *NetworkPolicyGeneratorReconciler) handleDeletion(ctx context.Context, g
 	log := log.FromContext(ctx)
 	log.Info("Resource is being deleted", "name", generator.Name, "namespace", generator.Namespace)
 
-	if containsString(generator.ObjectMeta.Finalizers, finalizerName) {
+	if controllerutil.ContainsFinalizer(generator, finalizerName) {
 		if err := r.deleteNetworkPolicies(ctx, generator); err != nil {
 			log.Error(err, "failed to delete NetworkPolicies")
 			return ctrl.Result{}, err
 		}
-		generator.ObjectMeta.Finalizers = removeString(generator.ObjectMeta.Finalizers, finalizerName)
+		controllerutil.RemoveFinalizer(generator, finalizerName)
 		if err := r.Update(ctx, generator); err != nil {
 			log.Error(err, "failed to remove finalizer")
 			return ctrl.Result{}, err
@@ -183,26 +184,6 @@ func (r *NetworkPolicyGeneratorReconciler) deleteNetworkPolicies(ctx context.Con
 	}
 
 	return nil
-}
-
-// Helper functions
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-func removeString(slice []string, s string) []string {
-	var result []string
-	for _, item := range slice {
-		if item != s {
-			result = append(result, item)
-		}
-	}
-	return result
 }
 
 // SetupWithManager sets up the controller with the Manager
