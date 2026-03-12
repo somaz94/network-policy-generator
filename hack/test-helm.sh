@@ -48,6 +48,18 @@ cleanup_cr() {
   sleep 2
 }
 
+final_cleanup() {
+  echo ""
+  log_info "--- Final Cleanup (trap) ---"
+  cleanup_cr
+  kubectl delete -f "${SAMPLES_DIR}/test.yaml" --ignore-not-found 2>/dev/null || true
+  kubectl delete ns test-ns1 test-ns2 test-ns3 --ignore-not-found 2>/dev/null || true
+  kubectl delete crd networkpolicygenerators.security.policy.io --ignore-not-found 2>/dev/null || true
+  helm uninstall "${RELEASE_NAME}" --no-hooks 2>/dev/null || true
+  kubectl delete ns "$NAMESPACE" --ignore-not-found 2>/dev/null || true
+}
+trap final_cleanup EXIT
+
 check_cilium() {
   if kubectl get crd ciliumnetworkpolicies.cilium.io >/dev/null 2>&1; then
     return 0
@@ -342,27 +354,6 @@ if helm upgrade "${RELEASE_NAME}" "${CHART_DIR}" --wait --timeout 120s 2>&1 | gr
 else
   log_fail "Helm upgrade failed"
 fi
-
-# ============================================================
-# Cleanup
-# ============================================================
-echo ""
-log_info "--- Cleanup ---"
-kubectl delete -f "${SAMPLES_DIR}/test.yaml" --ignore-not-found 2>/dev/null || true
-kubectl delete ns test-ns1 test-ns2 test-ns3 --ignore-not-found 2>/dev/null || true
-
-log_info "Uninstalling Helm release..."
-# Delete CRD manually before uninstall to avoid cleanup hook hang
-kubectl delete crd networkpolicygenerators.security.policy.io --ignore-not-found 2>/dev/null || true
-helm uninstall "${RELEASE_NAME}" --no-hooks 2>&1 || true
-
-if ! kubectl get crd networkpolicygenerators.security.policy.io >/dev/null 2>&1; then
-  log_pass "CRD cleaned up after uninstall"
-else
-  log_info "CRD still exists"
-fi
-
-kubectl delete ns "$NAMESPACE" --ignore-not-found 2>/dev/null || true
 
 # ============================================================
 # Summary
