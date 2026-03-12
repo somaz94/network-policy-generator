@@ -46,6 +46,16 @@ cleanup_cr() {
   sleep 2
 }
 
+final_cleanup() {
+  echo ""
+  log_info "--- Final Cleanup (trap) ---"
+  cleanup_cr
+  kubectl delete -f "${SAMPLES_DIR}/test.yaml" --ignore-not-found 2>/dev/null || true
+  kubectl delete ns test-ns1 test-ns2 test-ns3 --ignore-not-found 2>/dev/null || true
+  make undeploy 2>&1 | tail -3 || true
+}
+trap final_cleanup EXIT
+
 check_cilium() {
   if kubectl get crd ciliumnetworkpolicies.cilium.io >/dev/null 2>&1; then
     return 0
@@ -307,15 +317,6 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
     log_skip "Cilium CRD not found, skipping Cilium tests"
   fi
 fi
-
-# ============================================================
-# Cleanup
-# ============================================================
-echo ""
-log_info "--- Cleanup ---"
-kubectl delete -f "${SAMPLES_DIR}/test.yaml" --ignore-not-found 2>/dev/null || true
-kubectl delete ns test-ns1 test-ns2 test-ns3 --ignore-not-found 2>/dev/null || true
-make undeploy 2>&1 | tail -3
 
 # ============================================================
 # Summary
