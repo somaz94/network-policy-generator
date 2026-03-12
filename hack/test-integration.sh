@@ -106,6 +106,9 @@ log_info "========================================="
 # Deploy controller
 log_info "Deploying controller..."
 make deploy 2>&1 | tail -5
+# Force image pull to ensure latest image is used during testing
+kubectl patch deployment network-policy-generator-controller-manager -n "$NAMESPACE" \
+  -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager","imagePullPolicy":"Always"}]}}}}' 2>/dev/null || true
 
 # Wait for controller pod to exist first, then wait for ready
 log_info "Waiting for controller to be ready..."
