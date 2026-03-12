@@ -52,7 +52,7 @@ final_cleanup() {
   cleanup_cr
   kubectl delete -f "${SAMPLES_DIR}/test.yaml" --ignore-not-found 2>/dev/null || true
   kubectl delete ns test-ns1 test-ns2 test-ns3 --ignore-not-found 2>/dev/null || true
-  make undeploy 2>&1 | tail -3 || true
+  make undeploy || true
 }
 trap final_cleanup EXIT
 
