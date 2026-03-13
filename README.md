@@ -2,6 +2,7 @@
 
 ![Top Language](https://img.shields.io/github/languages/top/somaz94/network-policy-generator?color=green&logo=go&logoColor=b)
 ![Version](https://img.shields.io/github/v/tag/somaz94/network-policy-generator?label=version&logo=kubernetes&logoColor=white)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A Kubernetes controller that automatically generates and manages Kubernetes Network Policies based on observed traffic patterns and user-defined rules.
 
@@ -293,5 +294,5 @@ Issues and pull requests are welcome.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
