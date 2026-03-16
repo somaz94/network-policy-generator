@@ -30,8 +30,8 @@ jobs:
       - name: Get tags
         id: get_tags
         run: |
-          latest_tag="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n1)"
-          first_tag="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | head -n1)"
+          latest_tag="$(git tag -l --sort=version:refname | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | tail -n1)"
+          first_tag="$(git tag -l --sort=version:refname | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)"
           echo "LATEST_TAG=${latest_tag}" >> "$GITHUB_ENV"
           echo "FIRST_TAG=${first_tag}" >> "$GITHUB_ENV"
 
