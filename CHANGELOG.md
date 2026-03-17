@@ -2,14 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-03-17)
-
-### Documentation
-
-- update changelog ([7558656](https://github.com/somaz94/network-policy-generator/commit/75586567602665c39ec8409ab25137338016e194))
-
-<br/>
-
 ## [v0.2.0](https://github.com/somaz94/network-policy-generator/compare/v0.1.2...v0.2.0) (2026-03-17)
 
 ### Features
@@ -22,6 +14,9 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- add events and calico RBAC to helm ClusterRole ([198f476](https://github.com/somaz94/network-policy-generator/commit/198f476dd270c8d7f6629b2541b0e8150935a24d))
+- unify event recording test logic with helm script ([639fdce](https://github.com/somaz94/network-policy-generator/commit/639fdcee6d0a446fdc0c2b215b0d56a1d05633eb))
+- add retry loop for event recording test in helm script ([a0756a4](https://github.com/somaz94/network-policy-generator/commit/a0756a4272d785393e6c3aec20c1fe2e35d9c991))
 - sync helm CRD with latest types and fix helm status check ([9a71448](https://github.com/somaz94/network-policy-generator/commit/9a71448edc36becd2ca8ad2fcbbfef7db33f1888))
 - move podSelector to spec level in sample and add learning test to helm ([18a9411](https://github.com/somaz94/network-policy-generator/commit/18a94118b20920333b5e24054dea90e03e73c3d5))
 - re-declare ARG in final stage for OCI labels ([acd2114](https://github.com/somaz94/network-policy-generator/commit/acd21145f5dcd08104874d28326e87b9fd267431))
@@ -43,6 +38,8 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
+- update changelog ([4f7afc9](https://github.com/somaz94/network-policy-generator/commit/4f7afc989bdbee19c8fc2dc94f673cd690042388))
+- update changelog ([7558656](https://github.com/somaz94/network-policy-generator/commit/75586567602665c39ec8409ab25137338016e194))
 - update changelog ([0178521](https://github.com/somaz94/network-policy-generator/commit/01785213b1a6c150115f7874bc80d1c448e867ac))
 - update TESTING.md metrics section to use port-forward ([54e292b](https://github.com/somaz94/network-policy-generator/commit/54e292bde74e938aafb4460e3c6167101740bd4c))
 - add event recording, metrics, webhook to README and docs ([c71b248](https://github.com/somaz94/network-policy-generator/commit/c71b24804e5a74a90a86f68fb1bdff62bccfe0ca))
