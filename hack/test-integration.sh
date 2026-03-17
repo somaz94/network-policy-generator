@@ -113,6 +113,11 @@ log_info "Network Policy Generator Integration Test"
 log_info "Engine: ${ENGINE}"
 log_info "========================================="
 
+# Clean up previous deployment if exists
+log_info "Cleaning up previous deployment..."
+make undeploy 2>/dev/null || true
+sleep 3
+
 # Deploy controller
 log_info "Deploying controller..."
 make deploy 2>&1 | tail -5
@@ -405,12 +410,18 @@ EOF
 
   # Test D-7: Prometheus Metrics
   log_info "[Test D-7] Prometheus Metrics Verification"
-  METRICS_POD=$(kubectl get pod -l control-plane=controller-manager -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-  if [[ -n "$METRICS_POD" ]]; then
-    # Metrics server runs on :8443 with HTTPS and authn; use SA token to authenticate
-    METRICS=$(kubectl exec "$METRICS_POD" -n "$NAMESPACE" -- \
-      curl -sk -H "Authorization: Bearer $(kubectl exec "$METRICS_POD" -n "$NAMESPACE" -- cat /var/run/secrets/kubernetes.io/serviceaccount/token 2>/dev/null)" \
-      https://localhost:8443/metrics 2>/dev/null || true)
+  METRICS_SVC="network-policy-generator-controller-manager-metrics-service"
+  if kubectl get svc "$METRICS_SVC" -n "$NAMESPACE" >/dev/null 2>&1; then
+    # Port-forward metrics service (distroless image has no curl)
+    kubectl port-forward -n "$NAMESPACE" "svc/${METRICS_SVC}" 18443:8443 >/dev/null 2>&1 &
+    PF_PID=$!
+    sleep 2
+    # Create SA token for authentication
+    TOKEN=$(kubectl create token network-policy-generator-controller-manager -n "$NAMESPACE" 2>/dev/null || true)
+    METRICS=$(curl -sk -H "Authorization: Bearer ${TOKEN}" https://localhost:18443/metrics 2>/dev/null || true)
+    kill $PF_PID 2>/dev/null || true
+    wait $PF_PID 2>/dev/null || true
+
     if echo "$METRICS" | grep -q "npg_reconcile_total"; then
       log_pass "Test D-7: npg_reconcile_total metric found"
     else
@@ -427,7 +438,7 @@ EOF
       log_fail "Test D-7: npg_policies_applied metric not found"
     fi
   else
-    log_skip "Test D-7: Controller pod not found, skipping metrics test"
+    log_skip "Test D-7: Metrics service not found, skipping metrics test"
   fi
 
   # Test D: Multi-Namespace
