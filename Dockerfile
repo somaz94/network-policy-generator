@@ -37,6 +37,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
+ARG VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=unknown
 
 # OCI image labels
 LABEL org.opencontainers.image.title="network-policy-generator" \
