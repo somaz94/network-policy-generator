@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.1](https://github.com/somaz94/network-policy-generator/compare/v0.2.0...v0.2.1) (2026-03-17)
+
+### Documentation
+
+- add CLAUDE.md project guide ([015f9b2](https://github.com/somaz94/network-policy-generator/commit/015f9b21124c1a6038bd84d7524a0626fb72c883))
+- add local source test note to TESTING.md ([aabf0f1](https://github.com/somaz94/network-policy-generator/commit/aabf0f18d13a526348d37dc602e4833d61ced369))
+- fix incomplete documentation and add missing template samples ([2f2bd9f](https://github.com/somaz94/network-policy-generator/commit/2f2bd9f5946f1a558d45320903b2a1b8638fc614))
+- update changelog ([7a45b27](https://github.com/somaz94/network-policy-generator/commit/7a45b2728c3b81e30aa89e2f361e392e8335d212))
+
+### Chores
+
+- bump version to v0.2.1 ([ca083b7](https://github.com/somaz94/network-policy-generator/commit/ca083b7f8fbb38c6f4c451558160e9246b153b3d))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v0.2.0](https://github.com/somaz94/network-policy-generator/compare/v0.1.2...v0.2.0) (2026-03-17)
 
 ### Features
