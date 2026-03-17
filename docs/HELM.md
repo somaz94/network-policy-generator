@@ -52,6 +52,7 @@ helm install npg ./helm/network-policy-generator
 | `crds.cleanup` | Cleanup CRDs on uninstall | `true` |
 | `metrics.enabled` | Enable metrics service | `true` |
 | `metrics.port` | Metrics port | `8443` |
+| `controller.enableWebhooks` | Enable admission webhooks (requires cert-manager) | `false` |
 
 <br/>
 

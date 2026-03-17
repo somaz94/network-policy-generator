@@ -350,6 +350,72 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 
 ---
 
+## 6-2. Operational Feature Tests
+
+<br/>
+
+### Test D-6: Event Recording
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-deny.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+# Verify Kubernetes Events are emitted
+kubectl get events -n test-ns1 --field-selector involvedObject.kind=NetworkPolicyGenerator
+```
+
+Expected events: `PolicyApplied`, `ModeTransition`, `PolicyDeleted`, etc.
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+<br/>
+
+### Test D-7: Prometheus Metrics
+
+```bash
+# Get controller pod name
+METRICS_POD=$(kubectl get pod -l control-plane=controller-manager \
+  -n network-policy-generator-system -o jsonpath='{.items[0].metadata.name}')
+
+# Check custom metrics
+kubectl exec $METRICS_POD -n network-policy-generator-system -- \
+  curl -s http://localhost:8080/metrics | grep npg_
+```
+
+Expected metrics: `npg_reconcile_total`, `npg_reconcile_duration_seconds`, `npg_policies_applied`, `npg_policy_operations_total`, `npg_generators_active`, `npg_dry_run_total`, `npg_validation_errors_total`
+
+<br/>
+
+### Test D-8: Webhook Validation (requires cert-manager)
+
+> **Note**: Webhook must be enabled with `--enable-webhooks` flag and cert-manager installed.
+
+```bash
+# Try creating an invalid CR (should be rejected)
+kubectl apply -f - <<EOF
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: invalid-test
+  namespace: test-ns1
+spec:
+  mode: "invalid"
+  policy:
+    type: "deny"
+EOF
+```
+
+Expected: admission webhook should reject with `Unsupported value: "invalid"`.
+
+---
+
 ## 7. Cilium NetworkPolicy Tests
 
 > **Requires Cilium CNI installed on the cluster**

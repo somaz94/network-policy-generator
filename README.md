@@ -36,12 +36,18 @@ This tool helps security teams and cluster administrators implement network segm
 ![Kubernetes](https://img.shields.io/badge/Kubernetes_NetworkPolicy-326CE5?logo=kubernetes&logoColor=white)
 ![Cilium](https://img.shields.io/badge/Cilium_NetworkPolicy-F8C517?logo=cilium&logoColor=black)
 ![Learning Mode](https://img.shields.io/badge/Learning_Mode-orange?logo=kubernetes&logoColor=white)
+![Event Recording](https://img.shields.io/badge/Event_Recording-purple?logo=kubernetes&logoColor=white)
+![Prometheus Metrics](https://img.shields.io/badge/Prometheus_Metrics-E6522C?logo=prometheus&logoColor=white)
+![Webhook Validation](https://img.shields.io/badge/Webhook_Validation-red?logo=kubernetes&logoColor=white)
 
 - **Pod Label Selector** — Target specific pods by label instead of entire namespaces
 - **CIDR-based Rules** — Define ingress/egress rules for external IP ranges (e.g., databases, external APIs)
 - **Named Port Support** — Use service port names (`http`, `grpc`) instead of numeric ports
 - **Dry Run Mode** — Preview generated policies in status without applying them to the cluster
 - **Policy Diff/Audit** — Track policy changes (Created/Updated) in status for audit trails
+- **Event Recording** — Emit Kubernetes Events on policy apply, delete, mode transition, and errors
+- **Prometheus Metrics** — Custom metrics for reconcile count, duration, active generators, and policy operations
+- **Webhook Validation** — Admission webhook for CRD validation (enable with `--enable-webhooks` flag, requires cert-manager)
 
 <br/>
 
