@@ -488,12 +488,23 @@ EOF
   # Test: Event Recording
   log_info "[Test] Event Recording Verification"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-deny.yaml" -n test-ns1
-  sleep 5
-  EVENTS=$(kubectl get events -n test-ns1 --field-selector involvedObject.kind=NetworkPolicyGenerator 2>/dev/null)
-  if echo "$EVENTS" | grep -qi "PolicyApplied\|Normal"; then
-    log_pass "Events: Events recorded for NetworkPolicyGenerator"
+  if wait_for_phase test-ns1 "Enforcing"; then
+    EVENTS_FOUND=false
+    for i in $(seq 1 10); do
+      EVENTS=$(kubectl get events -n test-ns1 --field-selector involvedObject.kind=NetworkPolicyGenerator 2>/dev/null)
+      if echo "$EVENTS" | grep -qi "PolicyApplied\|Normal"; then
+        EVENTS_FOUND=true
+        break
+      fi
+      sleep 2
+    done
+    if $EVENTS_FOUND; then
+      log_pass "Events: Events recorded for NetworkPolicyGenerator"
+    else
+      log_fail "Events: No events found for NetworkPolicyGenerator"
+    fi
   else
-    log_fail "Events: No events found for NetworkPolicyGenerator"
+    log_fail "Events: CR not in Enforcing phase"
   fi
   cleanup_cr
   sleep 2
