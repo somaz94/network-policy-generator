@@ -2,14 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-03-17)
+## [v0.2.0](https://github.com/somaz94/network-policy-generator/compare/v0.1.2...v0.2.0) (2026-03-17)
 
 ### Features
 
+- add Calico engine, policy templates, and learning mode suggestions ([e08c76c](https://github.com/somaz94/network-policy-generator/commit/e08c76c455ebec23e6800f98fda50dffc8639a28))
+- add admission webhook validation for CRD ([bed19b4](https://github.com/somaz94/network-policy-generator/commit/bed19b42e815da13befd3cbf42f01d6d3b53a8b4))
+- add Prometheus custom metrics ([0605e9b](https://github.com/somaz94/network-policy-generator/commit/0605e9b6f4729525c234a337a7b07bae2654628d))
+- add event recording for reconcile lifecycle ([6344884](https://github.com/somaz94/network-policy-generator/commit/63448840abac6d9fa05ff24f93385471761e2b1c))
 - add pod selector, CIDR rules, named port, dry-run, and policy diff ([1a0aabc](https://github.com/somaz94/network-policy-generator/commit/1a0aabccd853b981ca5ab550b7bc9c5d618644a8))
 
 ### Bug Fixes
 
+- re-declare ARG in final stage for OCI labels ([acd2114](https://github.com/somaz94/network-policy-generator/commit/acd21145f5dcd08104874d28326e87b9fd267431))
+- improve integration test reliability with wait_for_phase and metrics RBAC ([7f6274a](https://github.com/somaz94/network-policy-generator/commit/7f6274ab20d2e6b3eb0ae2a3c27ca9a8fa408077))
+- wait for rollout after imagePullPolicy patch and improve metrics test ([bf62036](https://github.com/somaz94/network-policy-generator/commit/bf6203656cacb658c299f7ecd6972bd317068a1c))
+- use port-forward for metrics test and clean up before deploy ([f5e19b5](https://github.com/somaz94/network-policy-generator/commit/f5e19b5a9bd35341d99d410c77696aa46494b957))
+- use HTTPS port 8443 with SA token for metrics test ([dfbcee3](https://github.com/somaz94/network-policy-generator/commit/dfbcee32adf30789e9fbda6f70ae1aa5a2a197f9))
+- make webhook registration conditional with --enable-webhooks flag ([ddc9d6e](https://github.com/somaz94/network-policy-generator/commit/ddc9d6e090431baaf04727a8072fca74da51ad16))
 - skip major version tag deletion on first release ([962e000](https://github.com/somaz94/network-policy-generator/commit/962e000d390160238ec5b4238d4995b9c4626a23))
 - add trap cleanup to Helm test ([f8093da](https://github.com/somaz94/network-policy-generator/commit/f8093daf85227850f1255991d8017fab602dd95a))
 - show full undeploy output in integration test cleanup ([7eb6812](https://github.com/somaz94/network-policy-generator/commit/7eb6812745d57660fa364fb977bbeb1c47d8dd0c))
@@ -23,10 +33,20 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
+- update TESTING.md metrics section to use port-forward ([54e292b](https://github.com/somaz94/network-policy-generator/commit/54e292bde74e938aafb4460e3c6167101740bd4c))
+- add event recording, metrics, webhook to README and docs ([c71b248](https://github.com/somaz94/network-policy-generator/commit/c71b24804e5a74a90a86f68fb1bdff62bccfe0ca))
+- README.md ([8205253](https://github.com/somaz94/network-policy-generator/commit/8205253041b72866fc766ba67d39bf21a55078ad))
+- update CONTRIBUTORS.md ([f84eb64](https://github.com/somaz94/network-policy-generator/commit/f84eb64e0a7192cf63bec8b1e4281cbf51d4be05))
+- update changelog ([e5d26fb](https://github.com/somaz94/network-policy-generator/commit/e5d26fb01f4476a5da06819a75167ca0383c71c8))
 - add new features documentation to README, HELM, and TESTING guides ([d89f875](https://github.com/somaz94/network-policy-generator/commit/d89f87536f2b769917b6fedaf539708737d4a6f8))
 - update changelog ([2a79503](https://github.com/somaz94/network-policy-generator/commit/2a795031e52bb5ef39f6a81dd57536e73721e500))
 - add dist/install.yaml and e2e test documentation ([5f5c7eb](https://github.com/somaz94/network-policy-generator/commit/5f5c7eb3bea839a751ba38af72d9573d764d5de8))
 - update changelog ([07ad8d5](https://github.com/somaz94/network-policy-generator/commit/07ad8d527b2a34fc6b6de0e1fc1d3c29a33b2980))
+
+### Tests
+
+- raise coverage to 90%+ and add CNI auto-detection to test scripts ([a6219a1](https://github.com/somaz94/network-policy-generator/commit/a6219a167819fc31e51620cfa2f3a470b640d4e2))
+- add event/metrics verification and fix helm imagePullPolicy ([5a08f56](https://github.com/somaz94/network-policy-generator/commit/5a08f56a6798756a5a02fba388b0489a6cca2f67))
 
 ### Continuous Integration
 
@@ -37,6 +57,7 @@ All notable changes to this project will be documented in this file.
 
 ### Chores
 
+- add build-time version injection and OCI labels to Dockerfile ([c11e182](https://github.com/somaz94/network-policy-generator/commit/c11e18212306b82fda5e113d3d08d6fad160c159))
 - bump version to v0.2.0 and add version bump script ([f7d33b0](https://github.com/somaz94/network-policy-generator/commit/f7d33b0464dbf9ca4b272632b343cc2883342d1e))
 - change license from MIT to Apache 2.0 ([0721f6e](https://github.com/somaz94/network-policy-generator/commit/0721f6e1ca0c0469942215c0756b838c721ecba5))
 - **deps:** bump the go-minor group with 8 updates ([56e8f7a](https://github.com/somaz94/network-policy-generator/commit/56e8f7a0f9652be6b6af9d3f9a7ad3717ab4369f))
