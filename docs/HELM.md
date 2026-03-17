@@ -81,6 +81,58 @@ spec:
 
 <br/>
 
+## Advanced Features
+
+After installation, you can use these additional CRD fields:
+
+### Pod Label Selector
+
+```yaml
+spec:
+  podSelector:
+    app: nginx
+    tier: frontend
+```
+
+### CIDR-based Rules
+
+```yaml
+spec:
+  cidrRules:
+    - cidr: "10.0.0.0/8"
+      direction: "egress"
+      protocol: TCP
+      port: 5432
+    - cidr: "192.168.1.0/24"
+      except:
+        - "192.168.1.100/32"
+      direction: "ingress"
+      protocol: TCP
+      port: 443
+```
+
+### Named Port
+
+```yaml
+spec:
+  globalRules:
+    - type: "allow"
+      namedPort: "http"
+      protocol: TCP
+      direction: "ingress"
+```
+
+### Dry Run Mode
+
+```yaml
+spec:
+  dryRun: true
+```
+
+Generated policies are stored in `.status.generatedPolicies` without being applied. Policy changes are tracked in `.status.policyDiff`.
+
+<br/>
+
 ## Upgrade
 
 ```bash

@@ -22,6 +22,14 @@ This tool helps security teams and cluster administrators implement network segm
 - Enabling gradual transition from learning to enforcement phases
 - Supporting multiple CNI backends via `policyEngine` field (`kubernetes`, `cilium`)
 
+### Key Features
+
+- **Pod Label Selector** — Target specific pods by label instead of entire namespaces
+- **CIDR-based Rules** — Define ingress/egress rules for external IP ranges (e.g., databases, external APIs)
+- **Named Port Support** — Use service port names (`http`, `grpc`) instead of numeric ports
+- **Dry Run Mode** — Preview generated policies in status without applying them to the cluster
+- **Policy Diff/Audit** — Track policy changes (Created/Updated) in status for audit trails
+
 <br/>
 
 ## Installation
@@ -111,6 +119,11 @@ Available sample configurations:
 - `security_v1_networkpolicygenerator-allow.yaml`: Allow-based policy example
 - `security_v1_networkpolicygenerator-deny.yaml`: Deny-based policy example
 - `security_v1_networkpolicygenerator.yaml`: Learning mode example
+- `security_v1_networkpolicygenerator-pod-selector.yaml`: Pod label selector example
+- `security_v1_networkpolicygenerator-cidr-rules.yaml`: CIDR-based egress/ingress rules
+- `security_v1_networkpolicygenerator-named-port.yaml`: Named port (`http`, `grpc`) example
+- `security_v1_networkpolicygenerator-dry-run.yaml`: Dry run mode (preview without applying)
+- `security_v1_networkpolicygenerator-full-features.yaml`: All features combined
 - `test-policy.yaml`: Namespace-specific policy examples
 - `test.yaml`: Test pods and services for validation
 
@@ -236,6 +249,114 @@ spec:
       protocol: TCP
       direction: "ingress"
 ```
+
+<br/>
+
+### 5. Pod Label Selector
+Target specific pods by label instead of applying to the entire namespace:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: pod-selector-example
+spec:
+  mode: "enforcing"
+  podSelector:
+    app: nginx
+    tier: frontend
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+```
+
+<br/>
+
+### 6. CIDR-based Rules
+Define egress/ingress rules for external IP ranges:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: cidr-rules-example
+spec:
+  mode: "enforcing"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+  cidrRules:
+    - cidr: "10.0.0.0/8"
+      direction: "egress"
+      protocol: TCP
+      port: 5432
+    - cidr: "192.168.1.0/24"
+      except:
+        - "192.168.1.100/32"
+      direction: "ingress"
+      protocol: TCP
+      port: 443
+```
+
+<br/>
+
+### 7. Named Port Support
+Use service port names instead of numeric ports:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: named-port-example
+spec:
+  mode: "enforcing"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+  globalRules:
+    - type: "allow"
+      namedPort: "http"
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      namedPort: "grpc"
+      protocol: TCP
+      direction: "egress"
+```
+
+<br/>
+
+### 8. Dry Run Mode
+Preview generated policies without applying them:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: dry-run-example
+spec:
+  mode: "enforcing"
+  dryRun: true
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+```
+
+Generated policies are stored in `.status.generatedPolicies` as JSON. No NetworkPolicy resources are created.
 
 <br/>
 

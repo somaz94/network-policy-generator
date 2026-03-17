@@ -228,6 +228,128 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 
 ---
 
+## 6-1. Advanced Feature Tests
+
+<br/>
+
+### Test D-1: Pod Label Selector
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-pod-selector.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies -n test-ns1
+# Verify podSelector labels are applied
+kubectl get networkpolicy -n test-ns1 -o jsonpath='{.items[0].spec.podSelector.matchLabels}'
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+<br/>
+
+### Test D-2: CIDR Rules
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-cidr-rules.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies -n test-ns1
+# Verify CIDR rules in egress/ingress
+kubectl get networkpolicy -n test-ns1 -o yaml | grep -A5 cidr
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+<br/>
+
+### Test D-3: Named Port
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-named-port.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies -n test-ns1
+# Verify named ports (http, grpc)
+kubectl get networkpolicy -n test-ns1 -o yaml | grep -A2 port
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+<br/>
+
+### Test D-4: Dry Run Mode
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-dry-run.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+# No NetworkPolicy should be created
+kubectl get networkpolicies -n test-ns1
+# Generated policies should be in status
+kubectl get networkpolicygenerator dry-run-example -n test-ns1 -o jsonpath='{.status.generatedPolicies}'
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+<br/>
+
+### Test D-5: Full Features (Pod Selector + CIDR + Named Port + Diff)
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-full-features.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies -n test-ns1
+# Verify policy diff in status
+kubectl get networkpolicygenerator full-features-example -n test-ns1 -o jsonpath='{.status.policyDiff}'
+# Verify applied policies count
+kubectl get networkpolicygenerator full-features-example -n test-ns1 -o jsonpath='{.status.appliedPoliciesCount}'
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+---
+
 ## 7. Cilium NetworkPolicy Tests
 
 > **Requires Cilium CNI installed on the cluster**
@@ -338,6 +460,11 @@ make undeploy
 | `security_v1_networkpolicygenerator.yaml` | kubernetes (default) | deny | Basic deny policy with global rules |
 | `security_v1_networkpolicygenerator-allow.yaml` | kubernetes (default) | allow | Allow policy - deny specific namespaces |
 | `security_v1_networkpolicygenerator-deny.yaml` | kubernetes (default) | deny | Deny policy - allow specific namespaces |
+| `security_v1_networkpolicygenerator-pod-selector.yaml` | kubernetes (default) | deny | Pod label selector targeting |
+| `security_v1_networkpolicygenerator-cidr-rules.yaml` | kubernetes (default) | deny | CIDR-based egress/ingress rules |
+| `security_v1_networkpolicygenerator-named-port.yaml` | kubernetes (default) | deny | Named port (`http`, `grpc`) rules |
+| `security_v1_networkpolicygenerator-dry-run.yaml` | kubernetes (default) | deny | Dry run mode (preview only) |
+| `security_v1_networkpolicygenerator-full-features.yaml` | kubernetes (default) | deny | All features combined |
 | `security_v1_networkpolicygenerator-cilium-allow.yaml` | cilium | allow | Cilium allow policy |
 | `security_v1_networkpolicygenerator-cilium-deny.yaml` | cilium | deny | Cilium deny policy |
 | `test.yaml` | - | - | Test pods (nginx) and services |
