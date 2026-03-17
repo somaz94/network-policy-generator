@@ -299,6 +299,47 @@ if should_test "kubernetes"; then
   curl_test test-client test-ns3 test-service1 test-ns1 pass "K8s Allow"
   cleanup_cr
 
+  # Test: Learning -> Enforcing
+  log_info "[Test] Learning -> Enforcing Mode"
+  kubectl apply -f - <<EOF
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: test-learning
+  namespace: test-ns1
+spec:
+  mode: "learning"
+  duration: "30s"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "test-ns3"
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+EOF
+  if wait_for_phase test-ns1 "Learning"; then
+    log_pass "Learning: CR starts in Learning phase"
+  else
+    log_fail "Learning: CR not in Learning phase"
+  fi
+  log_info "Waiting 35s for learning -> enforcing transition..."
+  sleep 35
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "Learning: Transitioned to Enforcing phase"
+  else
+    log_fail "Learning: Did not transition to Enforcing"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "Learning: NetworkPolicy generated after enforcing"
+  else
+    log_fail "Learning: NetworkPolicy not generated after enforcing"
+  fi
+  cleanup_cr
+  sleep 2
+
   # Test: Pod Selector Policy
   log_info "[Test] Kubernetes Pod Selector Policy"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-pod-selector.yaml" -n test-ns1
