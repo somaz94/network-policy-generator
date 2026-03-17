@@ -164,7 +164,8 @@ func (e *KubernetesEngine) applyGlobalRules(policies []*networkingv1.NetworkPoli
 	for _, p := range policies {
 		for _, rule := range globalRules {
 			port := globalRulePort(rule)
-			if rule.Direction == DirectionIngress {
+			switch rule.Direction {
+			case DirectionIngress:
 				p.Spec.Ingress = append(p.Spec.Ingress, networkingv1.NetworkPolicyIngressRule{
 					Ports: []networkingv1.NetworkPolicyPort{{
 						Protocol: (*v1.Protocol)(&rule.Protocol),
@@ -174,7 +175,7 @@ func (e *KubernetesEngine) applyGlobalRules(policies []*networkingv1.NetworkPoli
 						IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},
 					}},
 				})
-			} else if rule.Direction == DirectionEgress {
+			case DirectionEgress:
 				p.Spec.Egress = append(p.Spec.Egress, networkingv1.NetworkPolicyEgressRule{
 					Ports: []networkingv1.NetworkPolicyPort{{
 						Protocol: (*v1.Protocol)(&rule.Protocol),
@@ -202,11 +203,12 @@ func (e *KubernetesEngine) applyCIDRRules(policies []*networkingv1.NetworkPolicy
 				Except: rule.Except,
 			}
 
-			if rule.Direction == DirectionIngress {
+			switch rule.Direction {
+			case DirectionIngress:
 				p.Spec.Ingress = append(p.Spec.Ingress, networkingv1.NetworkPolicyIngressRule{
 					From: []networkingv1.NetworkPolicyPeer{{IPBlock: ipBlock}},
 				})
-			} else if rule.Direction == DirectionEgress {
+			case DirectionEgress:
 				p.Spec.Egress = append(p.Spec.Egress, networkingv1.NetworkPolicyEgressRule{
 					To: []networkingv1.NetworkPolicyPeer{{IPBlock: ipBlock}},
 				})

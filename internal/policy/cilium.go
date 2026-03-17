@@ -128,12 +128,13 @@ func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, globalRules [
 					Protocol: rule.Protocol,
 				}},
 			}
-			if rule.Direction == DirectionIngress {
+			switch rule.Direction {
+			case DirectionIngress:
 				ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, CiliumIngressRule{
 					FromEntities: []string{EntityWorld},
 					ToPorts:      []CiliumPortRule{portRule},
 				})
-			} else if rule.Direction == DirectionEgress {
+			case DirectionEgress:
 				ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, CiliumEgressRule{
 					ToEntities: []string{EntityWorld},
 					ToPorts:    []CiliumPortRule{portRule},
@@ -152,11 +153,12 @@ func (e *CiliumEngine) applyCIDRRules(policies []runtime.Object, cidrRules []sec
 	for _, obj := range policies {
 		ciliumPolicy := obj.(*CiliumNetworkPolicy)
 		for _, rule := range cidrRules {
-			if rule.Direction == DirectionIngress {
+			switch rule.Direction {
+			case DirectionIngress:
 				ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, CiliumIngressRule{
 					FromCIDR: []string{rule.CIDR},
 				})
-			} else if rule.Direction == DirectionEgress {
+			case DirectionEgress:
 				ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, CiliumEgressRule{
 					ToCIDR: []string{rule.CIDR},
 				})

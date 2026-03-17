@@ -139,10 +139,11 @@ func (e *CalicoEngine) applyGlobalRules(policies []runtime.Object, globalRules [
 				Protocol: rule.Protocol,
 			}
 
-			if rule.Direction == DirectionIngress {
+			switch rule.Direction {
+			case DirectionIngress:
 				calicoRule.Destination = &CalicoEntityRule{Ports: []interface{}{port}}
 				calicoPolicy.Spec.Ingress = append(calicoPolicy.Spec.Ingress, calicoRule)
-			} else if rule.Direction == DirectionEgress {
+			case DirectionEgress:
 				calicoRule.Destination = &CalicoEntityRule{Ports: []interface{}{port}}
 				calicoPolicy.Spec.Egress = append(calicoPolicy.Spec.Egress, calicoRule)
 			}
@@ -164,12 +165,13 @@ func (e *CalicoEngine) applyCIDRRules(policies []runtime.Object, cidrRules []sec
 				NotNets: rule.Except,
 			}
 
-			if rule.Direction == DirectionIngress {
+			switch rule.Direction {
+			case DirectionIngress:
 				calicoPolicy.Spec.Ingress = append(calicoPolicy.Spec.Ingress, CalicoRule{
 					Action: CalicoActionAllow,
 					Source: entity,
 				})
-			} else if rule.Direction == DirectionEgress {
+			case DirectionEgress:
 				calicoPolicy.Spec.Egress = append(calicoPolicy.Spec.Egress, CalicoRule{
 					Action:      CalicoActionAllow,
 					Destination: entity,

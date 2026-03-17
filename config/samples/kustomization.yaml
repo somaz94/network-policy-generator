@@ -6,4 +6,6 @@ resources:
 - security_v1_networkpolicygenerator-named-port.yaml
 - security_v1_networkpolicygenerator-dry-run.yaml
 - security_v1_networkpolicygenerator-full-features.yaml
+- security_v1_networkpolicygenerator-template-backend-api.yaml
+- security_v1_networkpolicygenerator-template-monitoring.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

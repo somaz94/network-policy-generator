@@ -152,6 +152,10 @@ Available sample configurations:
 - `security_v1_networkpolicygenerator-calico-allow.yaml`: Calico allow policy
 - `security_v1_networkpolicygenerator-template-web-app.yaml`: Web-app policy template
 - `security_v1_networkpolicygenerator-template-database.yaml`: Database policy template
+- `security_v1_networkpolicygenerator-template-backend-api.yaml`: Backend API policy template
+- `security_v1_networkpolicygenerator-template-monitoring.yaml`: Monitoring policy template
+- `security_v1_networkpolicygenerator-cilium-deny.yaml`: Cilium deny policy
+- `security_v1_networkpolicygenerator-cilium-allow.yaml`: Cilium allow policy
 - `test-policy.yaml`: Namespace-specific policy examples
 - `test.yaml`: Test pods and services for validation
 
@@ -290,13 +294,13 @@ metadata:
   name: pod-selector-example
 spec:
   mode: "enforcing"
-  podSelector:
-    app: nginx
-    tier: frontend
   policy:
     type: "deny"
     allowedNamespaces:
       - "kube-system"
+    podSelector:
+      app: nginx
+      tier: frontend
   globalRules:
     - type: "allow"
       port: 80

@@ -43,17 +43,31 @@ helm install npg ./helm/network-policy-generator
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `serviceAccount.create` | Create service account | `true` |
 | `serviceAccount.name` | Service account name | `network-policy-generator-controller-manager` |
+| `podSecurityContext.runAsNonRoot` | Run pod as non-root user | `true` |
+| `securityContext.allowPrivilegeEscalation` | Disallow privilege escalation | `false` |
+| `securityContext.capabilities.drop` | Drop all Linux capabilities | `["ALL"]` |
 | `resources.limits.cpu` | CPU limit | `500m` |
 | `resources.limits.memory` | Memory limit | `128Mi` |
 | `resources.requests.cpu` | CPU request | `10m` |
 | `resources.requests.memory` | Memory request | `64Mi` |
+| `controller.metricsBindAddress` | Metrics bind address | `:8443` |
+| `controller.healthProbeBindAddress` | Health probe bind address | `:8081` |
 | `controller.leaderElect` | Enable leader election | `true` |
+| `service.type` | Metrics service type | `ClusterIP` |
+| `service.port` | Metrics service port | `8443` |
+| `probes.liveness.initialDelaySeconds` | Liveness probe initial delay | `15` |
+| `probes.liveness.periodSeconds` | Liveness probe period | `20` |
+| `probes.liveness.port` | Liveness probe port | `8081` |
+| `probes.readiness.initialDelaySeconds` | Readiness probe initial delay | `5` |
+| `probes.readiness.periodSeconds` | Readiness probe period | `10` |
+| `probes.readiness.port` | Readiness probe port | `8081` |
 | `rbac.enabled` | Create RBAC resources | `true` |
 | `crds.enabled` | Install CRDs | `true` |
 | `crds.cleanup` | Cleanup CRDs on uninstall | `true` |
 | `metrics.enabled` | Enable metrics service | `true` |
 | `metrics.port` | Metrics port | `8443` |
-| `controller.enableWebhooks` | Enable admission webhooks (requires cert-manager) | `false` |
+
+> **Note**: Admission webhooks can be enabled with the `--enable-webhooks` controller flag (requires cert-manager). This is a controller argument, not a Helm value.
 
 <br/>
 

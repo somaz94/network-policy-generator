@@ -1,0 +1,13 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: template-monitoring-example
+spec:
+  mode: "enforcing"
+  templateName: "monitoring"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+    podSelector:
+      app: prometheus

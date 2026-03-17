@@ -1,0 +1,14 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: template-backend-api-example
+spec:
+  mode: "enforcing"
+  templateName: "backend-api"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "frontend-ns"
+      - "kube-system"
+    podSelector:
+      app: api-server

@@ -105,7 +105,7 @@ Test coverage:
 - Helm install & release verification
 - Controller pod, CRD, RBAC, Service verification
 - Kubernetes/Cilium/Calico NetworkPolicy CR tests (same as integration)
-- Policy Template tests (web-app, database)
+- Policy Template tests (web-app, database, backend-api, monitoring)
 - Helm upgrade test
 - Helm uninstall & CRD cleanup hook verification
 
@@ -537,6 +537,52 @@ Cleanup:
 kubectl delete networkpolicygenerators -n test-ns1 --all
 ```
 
+<br/>
+
+### Test J-2: Backend API Template
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-template-backend-api.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies -n test-ns1
+# Verify API port rules (8080, 8443, 9090) are applied
+kubectl get networkpolicy -n test-ns1 -o yaml | grep -A2 port
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+<br/>
+
+### Test J-3: Monitoring Template
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-template-monitoring.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies -n test-ns1
+# Verify Prometheus scraping port rules (9090, 9100) are applied
+kubectl get networkpolicy -n test-ns1 -o yaml | grep -A2 port
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
 ---
 
 ## 6-5. Learning Mode Suggestion Tests
@@ -593,7 +639,7 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 
 <br/>
 
-### Test D: Cilium Deny Policy
+### Test L: Cilium Deny Policy
 
 ```bash
 kubectl apply -f config/samples/security_v1_networkpolicygenerator-cilium-deny.yaml -n test-ns1
@@ -615,7 +661,7 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 
 <br/>
 
-### Test E: Cilium Allow Policy
+### Test M: Cilium Allow Policy
 
 ```bash
 kubectl apply -f config/samples/security_v1_networkpolicygenerator-cilium-allow.yaml -n test-ns1
@@ -708,5 +754,7 @@ make undeploy
 | `security_v1_networkpolicygenerator-calico-deny.yaml` | calico | deny | Calico deny policy |
 | `security_v1_networkpolicygenerator-template-web-app.yaml` | kubernetes (default) | deny | Web-app template (ports 80, 443) |
 | `security_v1_networkpolicygenerator-template-database.yaml` | kubernetes (default) | deny | Database template (ports 3306, 5432, 6379, 27017) |
+| `security_v1_networkpolicygenerator-template-backend-api.yaml` | kubernetes (default) | deny | Backend API template (ports 8080, 8443, 9090) |
+| `security_v1_networkpolicygenerator-template-monitoring.yaml` | kubernetes (default) | deny | Monitoring template (ports 9090, 9100) |
 | `test.yaml` | - | - | Test pods (nginx) and services |
 | `test-policy.yaml` | kubernetes (default) | deny | Multi-namespace test |
