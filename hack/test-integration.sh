@@ -407,7 +407,10 @@ EOF
   log_info "[Test D-7] Prometheus Metrics Verification"
   METRICS_POD=$(kubectl get pod -l control-plane=controller-manager -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
   if [[ -n "$METRICS_POD" ]]; then
-    METRICS=$(kubectl exec "$METRICS_POD" -n "$NAMESPACE" -- curl -s http://localhost:8080/metrics 2>/dev/null || true)
+    # Metrics server runs on :8443 with HTTPS and authn; use SA token to authenticate
+    METRICS=$(kubectl exec "$METRICS_POD" -n "$NAMESPACE" -- \
+      curl -sk -H "Authorization: Bearer $(kubectl exec "$METRICS_POD" -n "$NAMESPACE" -- cat /var/run/secrets/kubernetes.io/serviceaccount/token 2>/dev/null)" \
+      https://localhost:8443/metrics 2>/dev/null || true)
     if echo "$METRICS" | grep -q "npg_reconcile_total"; then
       log_pass "Test D-7: npg_reconcile_total metric found"
     else
