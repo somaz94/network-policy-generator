@@ -1,0 +1,30 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: cidr-rules-example
+  labels:
+    app.kubernetes.io/name: network-policy-generator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  mode: "enforcing"
+
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+
+  cidrRules:                # CIDR Rules: external IP range based rules
+    - cidr: "10.0.0.0/8"       # Allow egress to internal network
+      direction: "egress"
+    - cidr: "192.168.1.0/24"   # Allow ingress from specific subnet
+      except:
+        - "192.168.1.200/32"   # Except this IP
+      direction: "ingress"
+    - cidr: "203.0.113.0/24"   # Allow egress to external API server
+      direction: "egress"
+
+  globalRules:
+    - type: "allow"
+      port: 443
+      protocol: TCP
+      direction: "egress"

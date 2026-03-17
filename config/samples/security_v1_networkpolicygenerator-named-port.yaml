@@ -1,0 +1,30 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: named-port-example
+  labels:
+    app.kubernetes.io/name: network-policy-generator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  mode: "enforcing"
+
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+    podSelector:
+      app: "api-server"
+
+  globalRules:              # Named Port: use service port names instead of numbers
+    - type: "allow"
+      namedPort: "http"         # Port name defined in Service/Pod spec
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      namedPort: "grpc"
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      namedPort: "https"
+      protocol: TCP
+      direction: "egress"

@@ -37,12 +37,21 @@ type NetworkPolicyGeneratorSpec struct {
 	// +optional
 	PolicyEngine string `json:"policyEngine,omitempty"`
 
+	// DryRun when true, generates policies without applying them
+	// Generated policies are stored in status.generatedPolicies
+	// +optional
+	DryRun bool `json:"dryRun,omitempty"`
+
 	// Policy defines the main policy configuration
 	Policy PolicyConfig `json:"policy"`
 
 	// GlobalRules defines the global traffic rules
 	// +optional
 	GlobalRules []GlobalRule `json:"globalRules,omitempty"`
+
+	// CIDRRules defines CIDR-based traffic rules for external IP ranges
+	// +optional
+	CIDRRules []CIDRRule `json:"cidrRules,omitempty"`
 }
 
 // PolicyConfig defines the main policy configuration
@@ -58,6 +67,11 @@ type PolicyConfig struct {
 	// DeniedNamespaces lists namespaces that are denied when policy type is allow
 	// +optional
 	DeniedNamespaces []string `json:"deniedNamespaces,omitempty"`
+
+	// PodSelector restricts policy to pods matching these labels
+	// If empty, applies to all pods in the namespace
+	// +optional
+	PodSelector map[string]string `json:"podSelector,omitempty"`
 }
 
 // GlobalRule defines a single traffic rule
@@ -66,14 +80,33 @@ type GlobalRule struct {
 	// +kubebuilder:validation:Enum=allow;deny
 	Type string `json:"type"`
 
-	// Port number
+	// Port number (1-65535). Either port or namedPort must be specified.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
-	Port int32 `json:"port"`
+	// +optional
+	Port int32 `json:"port,omitempty"`
+
+	// NamedPort is the port name (e.g., "http", "grpc") as an alternative to numeric port
+	// +optional
+	NamedPort string `json:"namedPort,omitempty"`
 
 	// Protocol (TCP/UDP)
 	// +kubebuilder:validation:Enum=TCP;UDP
 	Protocol string `json:"protocol"`
+
+	// Direction of the traffic (ingress/egress)
+	// +kubebuilder:validation:Enum=ingress;egress
+	Direction string `json:"direction"`
+}
+
+// CIDRRule defines a CIDR-based traffic rule for external IP ranges
+type CIDRRule struct {
+	// CIDR is the IP address range (e.g., "10.0.0.0/8", "192.168.1.0/24")
+	CIDR string `json:"cidr"`
+
+	// Except is a list of CIDRs to exclude from the rule
+	// +optional
+	Except []string `json:"except,omitempty"`
 
 	// Direction of the traffic (ingress/egress)
 	// +kubebuilder:validation:Enum=ingress;egress
@@ -90,6 +123,33 @@ type NetworkPolicyGeneratorStatus struct {
 
 	// ObservedTraffic contains the list of observed traffic patterns
 	ObservedTraffic []TrafficFlow `json:"observedTraffic,omitempty"`
+
+	// GeneratedPolicies contains the YAML representation of generated policies (populated in dry-run mode)
+	// +optional
+	GeneratedPolicies []string `json:"generatedPolicies,omitempty"`
+
+	// PolicyDiff contains the diff between the current and previously applied policies
+	// +optional
+	PolicyDiff []PolicyDiffEntry `json:"policyDiff,omitempty"`
+
+	// AppliedPoliciesCount is the number of currently applied policies
+	// +optional
+	AppliedPoliciesCount int `json:"appliedPoliciesCount,omitempty"`
+}
+
+// PolicyDiffEntry represents a single diff entry for policy audit
+type PolicyDiffEntry struct {
+	// PolicyName is the name of the policy
+	PolicyName string `json:"policyName"`
+
+	// Namespace is the namespace of the policy
+	Namespace string `json:"namespace"`
+
+	// Action is the type of change: Created, Updated, Unchanged
+	Action string `json:"action"`
+
+	// Timestamp is when the change was detected
+	Timestamp metav1.Time `json:"timestamp"`
 }
 
 // TrafficFlow represents a single observed traffic pattern

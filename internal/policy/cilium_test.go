@@ -164,6 +164,132 @@ func TestCiliumEngine(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, objects)
 	})
+
+	t.Run("Generate Policy with Pod Selector", func(t *testing.T) {
+		spec := &securityv1.NetworkPolicyGenerator{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-policy",
+				Namespace: "test-namespace",
+			},
+			Spec: securityv1.NetworkPolicyGeneratorSpec{
+				PolicyEngine: "cilium",
+				Policy: securityv1.PolicyConfig{
+					Type: "deny",
+					PodSelector: map[string]string{
+						"app":  "web",
+						"tier": "frontend",
+					},
+				},
+			},
+		}
+
+		objects, err := engine.GeneratePolicies(spec)
+		require.NoError(t, err)
+		require.Len(t, objects, 1)
+
+		policy := objects[0].(*CiliumNetworkPolicy)
+		assert.Equal(t, "web", policy.Spec.EndpointSelector.MatchLabels["app"])
+		assert.Equal(t, "frontend", policy.Spec.EndpointSelector.MatchLabels["tier"])
+	})
+
+	t.Run("Generate Policy without Pod Selector defaults to empty", func(t *testing.T) {
+		spec := &securityv1.NetworkPolicyGenerator{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-policy",
+				Namespace: "test-namespace",
+			},
+			Spec: securityv1.NetworkPolicyGeneratorSpec{
+				PolicyEngine: "cilium",
+				Policy: securityv1.PolicyConfig{
+					Type: "deny",
+				},
+			},
+		}
+
+		objects, err := engine.GeneratePolicies(spec)
+		require.NoError(t, err)
+		require.Len(t, objects, 1)
+
+		policy := objects[0].(*CiliumNetworkPolicy)
+		assert.Empty(t, policy.Spec.EndpointSelector.MatchLabels)
+	})
+
+	t.Run("Generate Policy with CIDR Rules", func(t *testing.T) {
+		spec := &securityv1.NetworkPolicyGenerator{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-policy",
+				Namespace: "test-namespace",
+			},
+			Spec: securityv1.NetworkPolicyGeneratorSpec{
+				PolicyEngine: "cilium",
+				Policy: securityv1.PolicyConfig{
+					Type: "deny",
+				},
+				CIDRRules: []securityv1.CIDRRule{
+					{
+						CIDR:      "10.0.0.0/8",
+						Direction: "egress",
+					},
+					{
+						CIDR:      "192.168.1.0/24",
+						Direction: "ingress",
+					},
+				},
+			},
+		}
+
+		objects, err := engine.GeneratePolicies(spec)
+		require.NoError(t, err)
+		require.Len(t, objects, 1)
+
+		policy := objects[0].(*CiliumNetworkPolicy)
+		// 1 DNS egress + 1 CIDR egress
+		require.Len(t, policy.Spec.Egress, 2)
+		assert.Contains(t, policy.Spec.Egress[1].ToCIDR, "10.0.0.0/8")
+
+		// 1 CIDR ingress
+		require.Len(t, policy.Spec.Ingress, 1)
+		assert.Contains(t, policy.Spec.Ingress[0].FromCIDR, "192.168.1.0/24")
+	})
+
+	t.Run("Generate Policy with Named Port", func(t *testing.T) {
+		spec := &securityv1.NetworkPolicyGenerator{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-policy",
+				Namespace: "test-namespace",
+			},
+			Spec: securityv1.NetworkPolicyGeneratorSpec{
+				PolicyEngine: "cilium",
+				Policy: securityv1.PolicyConfig{
+					Type: "deny",
+				},
+				GlobalRules: []securityv1.GlobalRule{
+					{
+						Direction: "ingress",
+						Protocol:  "TCP",
+						NamedPort: "http",
+					},
+					{
+						Direction: "egress",
+						Protocol:  "TCP",
+						NamedPort: "grpc",
+					},
+				},
+			},
+		}
+
+		objects, err := engine.GeneratePolicies(spec)
+		require.NoError(t, err)
+		require.Len(t, objects, 1)
+
+		policy := objects[0].(*CiliumNetworkPolicy)
+		require.Len(t, policy.Spec.Ingress, 1)
+		assert.Equal(t, "http", policy.Spec.Ingress[0].ToPorts[0].Ports[0].Port)
+
+		// 1 DNS egress + 1 named port egress
+		require.Len(t, policy.Spec.Egress, 2)
+		assert.Equal(t, "grpc", policy.Spec.Egress[1].ToPorts[0].Ports[0].Port)
+	})
 }
 
 func TestCiliumNetworkPolicyDeepCopy(t *testing.T) {

@@ -234,6 +234,162 @@ EOF
   fi
   cleanup_cr
 
+  # Test D-1: Pod Selector Policy
+  log_info "[Test D-1] Kubernetes Pod Selector Policy"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-pod-selector.yaml" -n test-ns1
+  sleep 3
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "Test D-1: CR created with Enforcing phase"
+  else
+    log_fail "Test D-1: CR not in Enforcing phase"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "Test D-1: NetworkPolicy generated"
+    POD_SELECTOR=$(kubectl get networkpolicy -n test-ns1 -o jsonpath='{.items[0].spec.podSelector.matchLabels}' 2>/dev/null)
+    if echo "$POD_SELECTOR" | grep -q "web"; then
+      log_pass "Test D-1: podSelector labels applied correctly"
+    else
+      log_fail "Test D-1: podSelector labels not found"
+    fi
+  else
+    log_fail "Test D-1: NetworkPolicy not generated"
+  fi
+  cleanup_cr
+  sleep 2
+
+  # Test D-2: CIDR Rules Policy
+  log_info "[Test D-2] Kubernetes CIDR Rules Policy"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-cidr-rules.yaml" -n test-ns1
+  sleep 3
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "Test D-2: CR created with Enforcing phase"
+  else
+    log_fail "Test D-2: CR not in Enforcing phase"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "Test D-2: NetworkPolicy generated"
+    NP_JSON=$(kubectl get networkpolicy -n test-ns1 -o json 2>/dev/null)
+    if echo "$NP_JSON" | grep -q "10.0.0.0/8"; then
+      log_pass "Test D-2: Egress CIDR rule (10.0.0.0/8) found"
+    else
+      log_fail "Test D-2: Egress CIDR rule not found"
+    fi
+    if echo "$NP_JSON" | grep -q "192.168.1.0/24"; then
+      log_pass "Test D-2: Ingress CIDR rule (192.168.1.0/24) found"
+    else
+      log_fail "Test D-2: Ingress CIDR rule not found"
+    fi
+    if echo "$NP_JSON" | grep -q "192.168.1.200/32"; then
+      log_pass "Test D-2: CIDR except rule found"
+    else
+      log_fail "Test D-2: CIDR except rule not found"
+    fi
+  else
+    log_fail "Test D-2: NetworkPolicy not generated"
+  fi
+  cleanup_cr
+  sleep 2
+
+  # Test D-3: Named Port Policy
+  log_info "[Test D-3] Kubernetes Named Port Policy"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-named-port.yaml" -n test-ns1
+  sleep 3
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "Test D-3: CR created with Enforcing phase"
+  else
+    log_fail "Test D-3: CR not in Enforcing phase"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "Test D-3: NetworkPolicy generated"
+    NP_JSON=$(kubectl get networkpolicy -n test-ns1 -o json 2>/dev/null)
+    if echo "$NP_JSON" | grep -q '"http"'; then
+      log_pass "Test D-3: Named port 'http' found"
+    else
+      log_fail "Test D-3: Named port 'http' not found"
+    fi
+    if echo "$NP_JSON" | grep -q '"grpc"'; then
+      log_pass "Test D-3: Named port 'grpc' found"
+    else
+      log_fail "Test D-3: Named port 'grpc' not found"
+    fi
+  else
+    log_fail "Test D-3: NetworkPolicy not generated"
+  fi
+  cleanup_cr
+  sleep 2
+
+  # Test D-4: Dry Run Mode
+  log_info "[Test D-4] Kubernetes Dry Run Mode"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-dry-run.yaml" -n test-ns1
+  sleep 5
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "Test D-4: CR created with Enforcing phase"
+  else
+    log_fail "Test D-4: CR not in Enforcing phase"
+  fi
+  # In dry-run mode, no NetworkPolicy should be created
+  if ! kubectl get networkpolicies -n test-ns1 2>/dev/null | grep -q "generated"; then
+    log_pass "Test D-4: No NetworkPolicy created (dry-run mode)"
+  else
+    log_fail "Test D-4: NetworkPolicy unexpectedly created in dry-run mode"
+  fi
+  # Verify generated policies are stored in status
+  GENERATED=$(kubectl get networkpolicygenerators -n test-ns1 -o jsonpath='{.items[0].status.generatedPolicies}' 2>/dev/null)
+  if [[ -n "$GENERATED" && "$GENERATED" != "[]" ]]; then
+    log_pass "Test D-4: Generated policies stored in status"
+  else
+    log_fail "Test D-4: Generated policies not found in status"
+  fi
+  cleanup_cr
+  sleep 2
+
+  # Test D-5: Full Features (combined)
+  log_info "[Test D-5] Kubernetes Full Features (pod-selector + CIDR + named-port + diff)"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-full-features.yaml" -n test-ns1
+  sleep 3
+  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    log_pass "Test D-5: CR created with Enforcing phase"
+  else
+    log_fail "Test D-5: CR not in Enforcing phase"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "Test D-5: NetworkPolicy generated"
+    NP_JSON=$(kubectl get networkpolicy -n test-ns1 -o json 2>/dev/null)
+    if echo "$NP_JSON" | grep -q "payment-service"; then
+      log_pass "Test D-5: podSelector applied"
+    else
+      log_fail "Test D-5: podSelector not found"
+    fi
+    if echo "$NP_JSON" | grep -q "10.0.0.0/8"; then
+      log_pass "Test D-5: CIDR rule applied"
+    else
+      log_fail "Test D-5: CIDR rule not found"
+    fi
+    if echo "$NP_JSON" | grep -q '"metrics"'; then
+      log_pass "Test D-5: Named port applied"
+    else
+      log_fail "Test D-5: Named port not found"
+    fi
+    # Check policy diff in status
+    DIFF=$(kubectl get networkpolicygenerators -n test-ns1 -o jsonpath='{.items[0].status.policyDiff}' 2>/dev/null)
+    if [[ -n "$DIFF" && "$DIFF" != "[]" ]]; then
+      log_pass "Test D-5: Policy diff tracked in status"
+    else
+      log_fail "Test D-5: Policy diff not found in status"
+    fi
+    # Check applied count
+    COUNT=$(kubectl get networkpolicygenerators -n test-ns1 -o jsonpath='{.items[0].status.appliedPoliciesCount}' 2>/dev/null)
+    if [[ "$COUNT" -gt 0 ]]; then
+      log_pass "Test D-5: Applied policies count: ${COUNT}"
+    else
+      log_fail "Test D-5: Applied policies count is 0"
+    fi
+  else
+    log_fail "Test D-5: NetworkPolicy not generated"
+  fi
+  cleanup_cr
+  sleep 2
+
   # Test D: Multi-Namespace
   log_info "[Test D] Multi-Namespace Policy (test-policy.yaml)"
   kubectl apply -f "${SAMPLES_DIR}/test-policy.yaml"

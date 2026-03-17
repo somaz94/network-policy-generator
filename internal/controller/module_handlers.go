@@ -92,14 +92,30 @@ func (r *NetworkPolicyGeneratorReconciler) handleKubernetesEnforcing(ctx context
 		return ctrl.Result{}, err
 	}
 
+	// Dry-run mode: store generated policies in status without applying
+	if generator.Spec.DryRun {
+		return r.handleDryRun(ctx, generator, policies)
+	}
+
+	var diffEntries []securityv1.PolicyDiffEntry
 	for _, p := range policies {
-		if err := r.applyNetworkPolicy(ctx, generator, p); err != nil {
-			log.Error(err, "failed to apply NetworkPolicy",
+		action, applyErr := r.applyNetworkPolicyWithDiff(ctx, generator, p)
+		if applyErr != nil {
+			log.Error(applyErr, "failed to apply NetworkPolicy",
 				"namespace", p.Namespace,
 				"name", p.Name)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, applyErr
 		}
+		diffEntries = append(diffEntries, securityv1.PolicyDiffEntry{
+			PolicyName: p.Name,
+			Namespace:  p.Namespace,
+			Action:     action,
+			Timestamp:  metav1.Now(),
+		})
 	}
+
+	generator.Status.PolicyDiff = diffEntries
+	generator.Status.AppliedPoliciesCount = len(policies)
 
 	return r.updateStatusAndRequeue(ctx, generator)
 }
@@ -115,12 +131,19 @@ func (r *NetworkPolicyGeneratorReconciler) handleCiliumEnforcing(ctx context.Con
 		return ctrl.Result{}, err
 	}
 
+	// Dry-run mode: store generated policies in status without applying
+	if generator.Spec.DryRun {
+		return r.handleDryRunObjects(ctx, generator, objects)
+	}
+
 	for _, obj := range objects {
 		if err := r.applyCiliumPolicy(ctx, generator, obj); err != nil {
 			log.Error(err, "failed to apply CiliumNetworkPolicy")
 			return ctrl.Result{}, err
 		}
 	}
+
+	generator.Status.AppliedPoliciesCount = len(objects)
 
 	return r.updateStatusAndRequeue(ctx, generator)
 }
@@ -168,23 +191,6 @@ func (r *NetworkPolicyGeneratorReconciler) applyCiliumPolicy(ctx context.Context
 	return r.createOrUpdate(ctx, u)
 }
 
-// applyNetworkPolicy creates or updates a NetworkPolicy
-func (r *NetworkPolicyGeneratorReconciler) applyNetworkPolicy(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, np *networkingv1.NetworkPolicy) error {
-	np.OwnerReferences = []metav1.OwnerReference{ownerReference(generator)}
-
-	existing := &networkingv1.NetworkPolicy{}
-	err := r.Get(ctx, client.ObjectKey{Name: np.Name, Namespace: np.Namespace}, existing)
-	if err != nil {
-		if !apierrors.IsNotFound(err) {
-			return err
-		}
-		return r.Create(ctx, np)
-	}
-
-	np.ResourceVersion = existing.ResourceVersion
-	return r.Update(ctx, np)
-}
-
 // createOrUpdate handles the get-then-create-or-update pattern for unstructured objects
 func (r *NetworkPolicyGeneratorReconciler) createOrUpdate(ctx context.Context, u *unstructured.Unstructured) error {
 	existing := &unstructured.Unstructured{}
@@ -211,4 +217,69 @@ func ciliumGVK() schema.GroupVersionKind {
 		Version: policy.CiliumVersion,
 		Kind:    policy.CiliumKind,
 	}
+}
+
+// handleDryRun stores generated Kubernetes NetworkPolicies in status without applying
+func (r *NetworkPolicyGeneratorReconciler) handleDryRun(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, policies []*networkingv1.NetworkPolicy) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+	log.Info("Dry-run mode: generating policies without applying", "count", len(policies))
+
+	var policyYAMLs []string
+	for _, p := range policies {
+		data, err := json.Marshal(p)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to marshal policy %s: %w", p.Name, err)
+		}
+		policyYAMLs = append(policyYAMLs, string(data))
+	}
+
+	generator.Status.GeneratedPolicies = policyYAMLs
+	generator.Status.AppliedPoliciesCount = 0
+	generator.Status.PolicyDiff = nil
+
+	return r.updateStatusAndRequeue(ctx, generator)
+}
+
+// handleDryRunObjects stores generated runtime.Objects in status without applying
+func (r *NetworkPolicyGeneratorReconciler) handleDryRunObjects(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, objects []runtime.Object) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+	log.Info("Dry-run mode: generating Cilium policies without applying", "count", len(objects))
+
+	var policyYAMLs []string
+	for _, obj := range objects {
+		data, err := json.Marshal(obj)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to marshal Cilium policy: %w", err)
+		}
+		policyYAMLs = append(policyYAMLs, string(data))
+	}
+
+	generator.Status.GeneratedPolicies = policyYAMLs
+	generator.Status.AppliedPoliciesCount = 0
+	generator.Status.PolicyDiff = nil
+
+	return r.updateStatusAndRequeue(ctx, generator)
+}
+
+// applyNetworkPolicyWithDiff creates or updates a NetworkPolicy and returns the action taken
+func (r *NetworkPolicyGeneratorReconciler) applyNetworkPolicyWithDiff(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, np *networkingv1.NetworkPolicy) (string, error) {
+	np.OwnerReferences = []metav1.OwnerReference{ownerReference(generator)}
+
+	existing := &networkingv1.NetworkPolicy{}
+	err := r.Get(ctx, client.ObjectKey{Name: np.Name, Namespace: np.Namespace}, existing)
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return "", err
+		}
+		if err := r.Create(ctx, np); err != nil {
+			return "", err
+		}
+		return policy.DiffActionCreated, nil
+	}
+
+	np.ResourceVersion = existing.ResourceVersion
+	if err := r.Update(ctx, np); err != nil {
+		return "", err
+	}
+	return policy.DiffActionUpdated, nil
 }

@@ -1,0 +1,28 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: pod-selector-example
+  labels:
+    app.kubernetes.io/name: network-policy-generator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  mode: "enforcing"
+
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "monitoring"
+      - "logging"
+    podSelector:            # Pod Label Selector: restrict policy to specific pods
+      app: "web"
+      tier: "frontend"
+
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      port: 443
+      protocol: TCP
+      direction: "egress"

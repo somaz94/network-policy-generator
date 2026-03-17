@@ -84,4 +84,47 @@ func TestRules(t *testing.T) {
 		assert.Equal(t, int32(443), egressRules[0].Ports[0].Port.IntVal)
 		assert.Equal(t, "0.0.0.0/0", egressRules[0].To[0].IPBlock.CIDR)
 	})
+
+	t.Run("Generate Global Rules with Named Ports", func(t *testing.T) {
+		globalRules := []securityv1.GlobalRule{
+			{
+				Direction: "ingress",
+				Protocol:  "TCP",
+				NamedPort: "http",
+			},
+			{
+				Direction: "egress",
+				Protocol:  "TCP",
+				NamedPort: "https",
+			},
+		}
+
+		ingressRules, egressRules := GenerateGlobalRules(globalRules)
+
+		assert.Len(t, ingressRules, 1)
+		assert.Equal(t, "http", ingressRules[0].Ports[0].Port.StrVal)
+
+		assert.Len(t, egressRules, 1)
+		assert.Equal(t, "https", egressRules[0].Ports[0].Port.StrVal)
+	})
+}
+
+func TestGlobalRulePort(t *testing.T) {
+	t.Run("Numeric Port", func(t *testing.T) {
+		rule := securityv1.GlobalRule{Port: 8080}
+		result := globalRulePort(rule)
+		assert.Equal(t, int32(8080), result.IntVal)
+	})
+
+	t.Run("Named Port", func(t *testing.T) {
+		rule := securityv1.GlobalRule{NamedPort: "http"}
+		result := globalRulePort(rule)
+		assert.Equal(t, "http", result.StrVal)
+	})
+
+	t.Run("Named Port Takes Precedence", func(t *testing.T) {
+		rule := securityv1.GlobalRule{Port: 80, NamedPort: "http"}
+		result := globalRulePort(rule)
+		assert.Equal(t, "http", result.StrVal)
+	})
 }

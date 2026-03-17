@@ -97,11 +97,12 @@ func GenerateGlobalRules(rules []securityv1.GlobalRule) ([]networkingv1.NetworkP
 	var egressRules []networkingv1.NetworkPolicyEgressRule
 
 	for _, rule := range rules {
+		port := globalRulePort(rule)
 		if rule.Direction == DirectionIngress {
 			ingressRules = append(ingressRules, networkingv1.NetworkPolicyIngressRule{
 				Ports: []networkingv1.NetworkPolicyPort{{
 					Protocol: (*v1.Protocol)(ptr.To(rule.Protocol)),
-					Port:     ptr.To(intstr.FromInt32(rule.Port)),
+					Port:     &port,
 				}},
 				From: []networkingv1.NetworkPolicyPeer{{
 					IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},
@@ -111,7 +112,7 @@ func GenerateGlobalRules(rules []securityv1.GlobalRule) ([]networkingv1.NetworkP
 			egressRules = append(egressRules, networkingv1.NetworkPolicyEgressRule{
 				Ports: []networkingv1.NetworkPolicyPort{{
 					Protocol: (*v1.Protocol)(ptr.To(rule.Protocol)),
-					Port:     ptr.To(intstr.FromInt32(rule.Port)),
+					Port:     &port,
 				}},
 				To: []networkingv1.NetworkPolicyPeer{{
 					IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},

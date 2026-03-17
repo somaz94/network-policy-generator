@@ -2,6 +2,7 @@ package policy
 
 import (
 	"fmt"
+	"net"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -57,9 +58,12 @@ func (v *Validator) validateRules(policy *networkingv1.NetworkPolicy) error {
 func (v *Validator) validatePorts(ports []networkingv1.NetworkPolicyPort) error {
 	for i, port := range ports {
 		if port.Port != nil {
-			portVal := port.Port.IntVal
-			if portVal <= 0 || portVal > 65535 {
-				return fmt.Errorf("port %d is out of valid range (1-65535)", portVal)
+			// Named ports (string type) are always valid
+			if port.Port.Type == 0 { // IntType
+				portVal := port.Port.IntVal
+				if portVal <= 0 || portVal > 65535 {
+					return fmt.Errorf("port %d is out of valid range (1-65535)", portVal)
+				}
 			}
 		}
 
@@ -88,5 +92,36 @@ func (v *Validator) validateNamespaceConfigs(generator *securityv1.NetworkPolicy
 		}
 	}
 
+	return nil
+}
+
+// ValidateGlobalRules checks if the global rules are valid
+func (v *Validator) ValidateGlobalRules(rules []securityv1.GlobalRule) error {
+	for i, rule := range rules {
+		if rule.Port == 0 && rule.NamedPort == "" {
+			return fmt.Errorf("global rule %d: either port or namedPort must be specified", i)
+		}
+		if rule.Port != 0 && rule.NamedPort != "" {
+			return fmt.Errorf("global rule %d: port and namedPort are mutually exclusive", i)
+		}
+	}
+	return nil
+}
+
+// ValidateCIDRRules checks if the CIDR rules are valid
+func (v *Validator) ValidateCIDRRules(rules []securityv1.CIDRRule) error {
+	for i, rule := range rules {
+		if _, _, err := net.ParseCIDR(rule.CIDR); err != nil {
+			return fmt.Errorf("CIDR rule %d: invalid CIDR %q: %w", i, rule.CIDR, err)
+		}
+		for j, except := range rule.Except {
+			if _, _, err := net.ParseCIDR(except); err != nil {
+				return fmt.Errorf("CIDR rule %d except %d: invalid CIDR %q: %w", i, j, except, err)
+			}
+		}
+		if rule.Direction != DirectionIngress && rule.Direction != DirectionEgress {
+			return fmt.Errorf("CIDR rule %d: direction must be 'ingress' or 'egress'", i)
+		}
+	}
 	return nil
 }

@@ -1,0 +1,49 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: full-features-example
+  labels:
+    app.kubernetes.io/name: network-policy-generator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  mode: "enforcing"
+  policyEngine: "kubernetes"    # kubernetes or cilium
+
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+      - "monitoring"
+      - "istio-system"
+    podSelector:                # Target specific pods
+      app: "payment-service"
+      tier: "backend"
+
+  globalRules:
+    - type: "allow"             # Numeric port
+      port: 8443
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"             # Named port
+      namedPort: "metrics"
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      namedPort: "https"
+      protocol: TCP
+      direction: "egress"
+
+  cidrRules:
+    - cidr: "10.0.0.0/8"       # Internal network egress
+      direction: "egress"
+    - cidr: "172.16.0.0/12"    # Private network egress
+      direction: "egress"
+    - cidr: "203.0.113.0/24"   # External API ingress
+      except:
+        - "203.0.113.128/25"   # Exclude half of the range
+      direction: "ingress"
+
+  # Status will include:
+  # - policyDiff: tracks Created/Updated actions per policy
+  # - appliedPoliciesCount: number of applied policies
+  # - generatedPolicies: (only in dryRun mode) JSON of generated policies

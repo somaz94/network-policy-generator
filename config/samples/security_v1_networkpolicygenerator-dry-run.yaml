@@ -1,0 +1,35 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: dry-run-example
+  labels:
+    app.kubernetes.io/name: network-policy-generator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  mode: "enforcing"
+  dryRun: true              # Dry Run: generate policies without applying
+
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "monitoring"
+      - "logging"
+    podSelector:
+      app: "backend"
+
+  globalRules:
+    - type: "allow"
+      port: 8080
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      namedPort: "https"
+      protocol: TCP
+      direction: "egress"
+
+  cidrRules:
+    - cidr: "10.0.0.0/8"
+      direction: "egress"
+
+  # After applying, check status for generated policies:
+  # kubectl get networkpolicygenerator dry-run-example -o jsonpath='{.status.generatedPolicies}'

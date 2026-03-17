@@ -667,6 +667,290 @@ var _ = Describe("Mode Handlers", func() {
 		})
 	})
 
+	Context("Kubernetes Dry Run Mode", func() {
+		It("should store generated policies in status without applying", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-k8s-dryrun")
+			generator.Spec.Mode = "enforcing"
+			generator.Spec.DryRun = true
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			result, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
+
+			// Re-fetch to check status
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-k8s-dryrun", Namespace: namespace,
+			}, generator)).To(Succeed())
+			Expect(generator.Status.GeneratedPolicies).NotTo(BeEmpty())
+			Expect(generator.Status.AppliedPoliciesCount).To(Equal(0))
+
+			// Verify no actual NetworkPolicy was created
+			np := &networkingv1.NetworkPolicy{}
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Name:      generatorName + "-k8s-dryrun-generated",
+				Namespace: namespace,
+			}, np)
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("should return error when status update fails in dry-run", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-k8s-dryrun-err")
+			generator.Spec.Mode = "enforcing"
+			generator.Spec.DryRun = true
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{Client: k8sClient, statusUpdateError: fmt.Errorf("dryrun status failed")}
+			errReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+			}
+
+			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("dryrun status failed"))
+		})
+	})
+
+	Context("Cilium Dry Run Mode", func() {
+		It("should store generated cilium policies in status without applying", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-cilium-dryrun",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "cilium",
+					DryRun:       true,
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type:              "deny",
+						AllowedNamespaces: []string{"ns1"},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			result, err := reconciler.handleCiliumEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
+
+			// Re-fetch to check status
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-cilium-dryrun", Namespace: namespace,
+			}, generator)).To(Succeed())
+			Expect(generator.Status.GeneratedPolicies).NotTo(BeEmpty())
+			Expect(generator.Status.AppliedPoliciesCount).To(Equal(0))
+		})
+
+		It("should return error when status update fails in cilium dry-run", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-cilium-dryrun-err",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "cilium",
+					DryRun:       true,
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type:              "deny",
+						AllowedNamespaces: []string{"ns1"},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{Client: k8sClient, statusUpdateError: fmt.Errorf("cilium dryrun status failed")}
+			errReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+			}
+
+			_, err := errReconciler.handleCiliumEnforcing(ctx, generator)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("cilium dryrun status failed"))
+		})
+	})
+
+	Context("Policy Diff Tracking", func() {
+		It("should track Created action for new policies", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-diff-create")
+			generator.Spec.Mode = "enforcing"
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			result, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
+
+			// Re-fetch to check status
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-diff-create", Namespace: namespace,
+			}, generator)).To(Succeed())
+			Expect(generator.Status.PolicyDiff).NotTo(BeEmpty())
+			Expect(generator.Status.PolicyDiff[0].Action).To(Equal("Created"))
+			Expect(generator.Status.AppliedPoliciesCount).To(Equal(1))
+		})
+
+		It("should track Updated action for existing policies", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-diff-update")
+			generator.Spec.Mode = "enforcing"
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// First apply creates the policy
+			_, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Re-fetch
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-diff-update", Namespace: namespace,
+			}, generator)).To(Succeed())
+
+			// Second apply should be "Updated"
+			_, err = reconciler.handleKubernetesEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-diff-update", Namespace: namespace,
+			}, generator)).To(Succeed())
+			Expect(generator.Status.PolicyDiff).NotTo(BeEmpty())
+			Expect(generator.Status.PolicyDiff[0].Action).To(Equal("Updated"))
+		})
+	})
+
+	Context("Enforcing with Pod Selector", func() {
+		It("should create policy with pod selector labels", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-podselector")
+			generator.Spec.Mode = "enforcing"
+			generator.Spec.Policy.PodSelector = map[string]string{
+				"app":  "web",
+				"tier": "frontend",
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			_, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+
+			np := &networkingv1.NetworkPolicy{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName + "-podselector-generated",
+					Namespace: namespace,
+				}, np)
+			}, timeout, interval).Should(Succeed())
+
+			Expect(np.Spec.PodSelector.MatchLabels["app"]).To(Equal("web"))
+			Expect(np.Spec.PodSelector.MatchLabels["tier"]).To(Equal("frontend"))
+		})
+	})
+
+	Context("Enforcing with CIDR Rules", func() {
+		It("should create policy with CIDR-based rules", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-cidr")
+			generator.Spec.Mode = "enforcing"
+			generator.Spec.CIDRRules = []securityv1.CIDRRule{
+				{
+					CIDR:      "10.0.0.0/8",
+					Direction: "egress",
+				},
+				{
+					CIDR:      "192.168.1.0/24",
+					Except:    []string{"192.168.1.100/32"},
+					Direction: "ingress",
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			_, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+
+			np := &networkingv1.NetworkPolicy{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName + "-cidr-generated",
+					Namespace: namespace,
+				}, np)
+			}, timeout, interval).Should(Succeed())
+
+			// Should have CIDR ingress rule
+			hasCIDRIngress := false
+			for _, rule := range np.Spec.Ingress {
+				for _, from := range rule.From {
+					if from.IPBlock != nil && from.IPBlock.CIDR == "192.168.1.0/24" {
+						hasCIDRIngress = true
+						Expect(from.IPBlock.Except).To(ContainElement("192.168.1.100/32"))
+					}
+				}
+			}
+			Expect(hasCIDRIngress).To(BeTrue())
+
+			// Should have CIDR egress rule
+			hasCIDREgress := false
+			for _, rule := range np.Spec.Egress {
+				for _, to := range rule.To {
+					if to.IPBlock != nil && to.IPBlock.CIDR == "10.0.0.0/8" {
+						hasCIDREgress = true
+					}
+				}
+			}
+			Expect(hasCIDREgress).To(BeTrue())
+		})
+	})
+
+	Context("Enforcing with Named Port", func() {
+		It("should create policy with named port in global rules", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-namedport",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:     "enforcing",
+					Duration: metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+					GlobalRules: []securityv1.GlobalRule{
+						{
+							Type:      "allow",
+							NamedPort: "http",
+							Protocol:  "TCP",
+							Direction: "ingress",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			_, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+
+			np := &networkingv1.NetworkPolicy{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName + "-namedport-generated",
+					Namespace: namespace,
+				}, np)
+			}, timeout, interval).Should(Succeed())
+
+			hasNamedPort := false
+			for _, rule := range np.Spec.Ingress {
+				for _, port := range rule.Ports {
+					if port.Port != nil && port.Port.StrVal == "http" {
+						hasNamedPort = true
+					}
+				}
+			}
+			Expect(hasNamedPort).To(BeTrue())
+		})
+	})
+
 	Context("Cilium Enforcing Success Path", func() {
 		It("should successfully apply cilium policy with mock client", func() {
 			generator := &securityv1.NetworkPolicyGenerator{

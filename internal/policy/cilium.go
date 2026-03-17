@@ -27,6 +27,11 @@ func (e *CiliumEngine) EngineName() string {
 func (e *CiliumEngine) GeneratePolicies(generator *securityv1.NetworkPolicyGenerator) ([]runtime.Object, error) {
 	var policies []runtime.Object
 
+	endpointSelector := &CiliumEndpointSelector{}
+	if len(generator.Spec.Policy.PodSelector) > 0 {
+		endpointSelector.MatchLabels = generator.Spec.Policy.PodSelector
+	}
+
 	basePolicy := &CiliumNetworkPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: CiliumAPIVersion,
@@ -45,7 +50,7 @@ func (e *CiliumEngine) GeneratePolicies(generator *securityv1.NetworkPolicyGener
 			},
 		},
 		Spec: &CiliumNetworkPolicySpec{
-			EndpointSelector: &CiliumEndpointSelector{},
+			EndpointSelector: endpointSelector,
 		},
 	}
 
@@ -56,6 +61,7 @@ func (e *CiliumEngine) GeneratePolicies(generator *securityv1.NetworkPolicyGener
 	}
 
 	e.applyGlobalRules(policies, generator.Spec.GlobalRules)
+	e.applyCIDRRules(policies, generator.Spec.CIDRRules)
 
 	return policies, nil
 }
@@ -99,6 +105,14 @@ func (e *CiliumEngine) generateDenyPolicies(basePolicy *CiliumNetworkPolicy, gen
 	return []runtime.Object{policy}
 }
 
+// ciliumGlobalRulePort returns the port string for a GlobalRule (named port or numeric)
+func ciliumGlobalRulePort(rule securityv1.GlobalRule) string {
+	if rule.NamedPort != "" {
+		return rule.NamedPort
+	}
+	return strconv.Itoa(int(rule.Port))
+}
+
 // applyGlobalRules adds global rules to all policies
 func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, globalRules []securityv1.GlobalRule) {
 	if globalRules == nil {
@@ -110,7 +124,7 @@ func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, globalRules [
 		for _, rule := range globalRules {
 			portRule := CiliumPortRule{
 				Ports: []CiliumPort{{
-					Port:     strconv.Itoa(int(rule.Port)),
+					Port:     ciliumGlobalRulePort(rule),
 					Protocol: rule.Protocol,
 				}},
 			}
@@ -123,6 +137,28 @@ func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, globalRules [
 				ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, CiliumEgressRule{
 					ToEntities: []string{EntityWorld},
 					ToPorts:    []CiliumPortRule{portRule},
+				})
+			}
+		}
+	}
+}
+
+// applyCIDRRules adds CIDR-based rules to all Cilium policies
+func (e *CiliumEngine) applyCIDRRules(policies []runtime.Object, cidrRules []securityv1.CIDRRule) {
+	if cidrRules == nil {
+		return
+	}
+
+	for _, obj := range policies {
+		ciliumPolicy := obj.(*CiliumNetworkPolicy)
+		for _, rule := range cidrRules {
+			if rule.Direction == DirectionIngress {
+				ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, CiliumIngressRule{
+					FromCIDR: []string{rule.CIDR},
+				})
+			} else if rule.Direction == DirectionEgress {
+				ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, CiliumEgressRule{
+					ToCIDR: []string{rule.CIDR},
 				})
 			}
 		}

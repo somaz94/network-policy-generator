@@ -1,4 +1,9 @@
 ## Append samples of your project ##
 resources:
 - security_v1_networkpolicygenerator-allow.yaml
+- security_v1_networkpolicygenerator-pod-selector.yaml
+- security_v1_networkpolicygenerator-cidr-rules.yaml
+- security_v1_networkpolicygenerator-named-port.yaml
+- security_v1_networkpolicygenerator-dry-run.yaml
+- security_v1_networkpolicygenerator-full-features.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

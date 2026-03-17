@@ -273,4 +273,115 @@ func TestValidator(t *testing.T) {
 		err := validator.ValidatePolicy(policy, generator)
 		assert.Error(t, err)
 	})
+
+	t.Run("Validate Named Port Is Valid", func(t *testing.T) {
+		policy := &networkingv1.NetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-policy",
+				Namespace: "test-namespace",
+			},
+			Spec: networkingv1.NetworkPolicySpec{
+				Ingress: []networkingv1.NetworkPolicyIngressRule{
+					{
+						Ports: []networkingv1.NetworkPolicyPort{
+							{
+								Protocol: (*v1.Protocol)(ptr.To("TCP")),
+								Port:     ptr.To(intstr.FromString("http")),
+							},
+						},
+					},
+				},
+			},
+		}
+		generator := &securityv1.NetworkPolicyGenerator{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "test-namespace",
+			},
+		}
+		err := validator.ValidatePolicy(policy, generator)
+		assert.NoError(t, err)
+	})
+}
+
+func TestValidateGlobalRules(t *testing.T) {
+	validator := NewValidator()
+
+	t.Run("Valid Numeric Port", func(t *testing.T) {
+		rules := []securityv1.GlobalRule{
+			{Port: 80, Protocol: "TCP", Direction: "ingress"},
+		}
+		err := validator.ValidateGlobalRules(rules)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Valid Named Port", func(t *testing.T) {
+		rules := []securityv1.GlobalRule{
+			{NamedPort: "http", Protocol: "TCP", Direction: "ingress"},
+		}
+		err := validator.ValidateGlobalRules(rules)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Error When Neither Port Nor NamedPort", func(t *testing.T) {
+		rules := []securityv1.GlobalRule{
+			{Protocol: "TCP", Direction: "ingress"},
+		}
+		err := validator.ValidateGlobalRules(rules)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "either port or namedPort must be specified")
+	})
+
+	t.Run("Error When Both Port And NamedPort", func(t *testing.T) {
+		rules := []securityv1.GlobalRule{
+			{Port: 80, NamedPort: "http", Protocol: "TCP", Direction: "ingress"},
+		}
+		err := validator.ValidateGlobalRules(rules)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "mutually exclusive")
+	})
+}
+
+func TestValidateCIDRRules(t *testing.T) {
+	validator := NewValidator()
+
+	t.Run("Valid CIDR Rules", func(t *testing.T) {
+		rules := []securityv1.CIDRRule{
+			{CIDR: "10.0.0.0/8", Direction: "egress"},
+			{CIDR: "192.168.1.0/24", Except: []string{"192.168.1.100/32"}, Direction: "ingress"},
+		}
+		err := validator.ValidateCIDRRules(rules)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Invalid CIDR", func(t *testing.T) {
+		rules := []securityv1.CIDRRule{
+			{CIDR: "not-a-cidr", Direction: "egress"},
+		}
+		err := validator.ValidateCIDRRules(rules)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid CIDR")
+	})
+
+	t.Run("Invalid Except CIDR", func(t *testing.T) {
+		rules := []securityv1.CIDRRule{
+			{CIDR: "10.0.0.0/8", Except: []string{"invalid"}, Direction: "egress"},
+		}
+		err := validator.ValidateCIDRRules(rules)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "except")
+	})
+
+	t.Run("Invalid Direction", func(t *testing.T) {
+		rules := []securityv1.CIDRRule{
+			{CIDR: "10.0.0.0/8", Direction: "invalid"},
+		}
+		err := validator.ValidateCIDRRules(rules)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "direction must be")
+	})
+
+	t.Run("Empty Rules Valid", func(t *testing.T) {
+		err := validator.ValidateCIDRRules(nil)
+		assert.NoError(t, err)
+	})
 }

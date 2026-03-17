@@ -47,6 +47,11 @@ const (
 
 	// Requeue intervals
 	DefaultRequeueInterval = 5 * time.Minute
+
+	// Policy diff actions
+	DiffActionCreated   = "Created"
+	DiffActionUpdated   = "Updated"
+	DiffActionUnchanged = "Unchanged"
 )
 
 // PolicyName returns the generated policy name for a generator
