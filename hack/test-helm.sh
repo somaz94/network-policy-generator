@@ -190,17 +190,18 @@ kubectl delete crd networkpolicygenerators.security.policy.io --ignore-not-found
 
 # Install via Helm
 log_info "Installing chart via Helm..."
-helm upgrade --install "${RELEASE_NAME}" "${CHART_DIR}" \
+HELM_INSTALL_OUTPUT=$(helm upgrade --install "${RELEASE_NAME}" "${CHART_DIR}" \
   --create-namespace \
   --set image.pullPolicy=Always \
   --wait \
-  --timeout 120s 2>&1 | tail -5
+  --timeout 120s 2>&1) && HELM_RC=0 || HELM_RC=$?
+echo "$HELM_INSTALL_OUTPUT" | tail -5
 
 # Verify Helm release
-if helm status "${RELEASE_NAME}" 2>/dev/null | grep -q "deployed"; then
+if [[ $HELM_RC -eq 0 ]]; then
   log_pass "Helm release deployed successfully"
 else
-  log_fail "Helm release not in deployed status"
+  log_fail "Helm release not in deployed status (exit code: ${HELM_RC})"
 fi
 
 # Verify controller pod

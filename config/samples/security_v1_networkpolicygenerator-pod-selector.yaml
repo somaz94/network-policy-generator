@@ -8,15 +8,14 @@ metadata:
 spec:
   mode: "enforcing"
 
-  podSelector:              # Pod Label Selector: restrict policy to specific pods
-    app: "web"
-    tier: "frontend"
-
   policy:
     type: "deny"
     allowedNamespaces:
       - "monitoring"
       - "logging"
+    podSelector:            # Pod Label Selector: restrict policy to specific pods
+      app: "web"
+      tier: "frontend"
 
   globalRules:
     - type: "allow"
