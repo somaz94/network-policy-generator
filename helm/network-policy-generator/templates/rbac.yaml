@@ -45,10 +45,16 @@ metadata:
     {{- include "network-policy-generator.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: [""]
     resources: ["namespaces", "pods"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["cilium.io"]
     resources: ["ciliumnetworkpolicies"]
+    verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
+  - apiGroups: ["crd.projectcalico.org"]
+    resources: ["networkpolicies"]
     verbs: ["create", "delete", "get", "list", "patch", "update", "watch"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["networkpolicies"]
