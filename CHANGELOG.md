@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased (2026-03-17)
+
+### Documentation
+
+- update changelog ([7558656](https://github.com/somaz94/network-policy-generator/commit/75586567602665c39ec8409ab25137338016e194))
+
+<br/>
+
 ## [v0.2.0](https://github.com/somaz94/network-policy-generator/compare/v0.1.2...v0.2.0) (2026-03-17)
 
 ### Features
@@ -67,9 +75,6 @@ All notable changes to this project will be documented in this file.
 
 ### Contributors
 
-- GitHub Action
-- GitHub Actions
-- dependabot[bot]
 - somaz
 
 <br/>
@@ -98,8 +103,6 @@ All notable changes to this project will be documented in this file.
 
 ### Contributors
 
-- GitHub Action
-- GitHub Actions
 - somaz
 
 <br/>
@@ -124,7 +127,6 @@ All notable changes to this project will be documented in this file.
 
 ### Contributors
 
-- GitHub Action
 - somaz
 
 <br/>
@@ -186,9 +188,6 @@ All notable changes to this project will be documented in this file.
 
 ### Contributors
 
-- GitHub Action
-- GitHub Actions
-- dependabot[bot]
 - somaz
 
 <br/>
