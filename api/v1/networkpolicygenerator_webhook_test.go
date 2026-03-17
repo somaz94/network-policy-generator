@@ -92,7 +92,7 @@ func TestValidateGenerator_InvalidEngine(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
 			Mode:         "enforcing",
-			PolicyEngine: "calico",
+			PolicyEngine: "unknown-engine",
 			Policy:       PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
 		},
 	}

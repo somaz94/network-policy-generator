@@ -32,10 +32,17 @@ type NetworkPolicyGeneratorSpec struct {
 	// PolicyEngine specifies the CNI-specific policy engine to use
 	// "kubernetes" generates standard NetworkPolicy (networking.k8s.io/v1)
 	// "cilium" generates CiliumNetworkPolicy (cilium.io/v2)
-	// +kubebuilder:validation:Enum=kubernetes;cilium
+	// +kubebuilder:validation:Enum=kubernetes;cilium;calico
 	// +kubebuilder:default=kubernetes
 	// +optional
 	PolicyEngine string `json:"policyEngine,omitempty"`
+
+	// TemplateName specifies a built-in policy template to use as a base
+	// Available templates: zero-trust, web-app, backend-api, database, monitoring
+	// Template rules are merged with user-defined globalRules (user rules take precedence)
+	// +kubebuilder:validation:Enum=zero-trust;web-app;backend-api;database;monitoring;""
+	// +optional
+	TemplateName string `json:"templateName,omitempty"`
 
 	// DryRun when true, generates policies without applying them
 	// Generated policies are stored in status.generatedPolicies
@@ -124,6 +131,15 @@ type NetworkPolicyGeneratorStatus struct {
 	// ObservedTraffic contains the list of observed traffic patterns
 	ObservedTraffic []TrafficFlow `json:"observedTraffic,omitempty"`
 
+	// SuggestedNamespaces contains namespace names observed during learning mode
+	// These can be used as allowedNamespaces when transitioning to enforcing
+	// +optional
+	SuggestedNamespaces []string `json:"suggestedNamespaces,omitempty"`
+
+	// SuggestedRules contains port/protocol rules observed during learning mode
+	// +optional
+	SuggestedRules []SuggestedRule `json:"suggestedRules,omitempty"`
+
 	// GeneratedPolicies contains the YAML representation of generated policies (populated in dry-run mode)
 	// +optional
 	GeneratedPolicies []string `json:"generatedPolicies,omitempty"`
@@ -150,6 +166,21 @@ type PolicyDiffEntry struct {
 
 	// Timestamp is when the change was detected
 	Timestamp metav1.Time `json:"timestamp"`
+}
+
+// SuggestedRule represents a port/protocol rule suggested by learning mode
+type SuggestedRule struct {
+	// Port number observed
+	Port int32 `json:"port"`
+
+	// Protocol observed (TCP/UDP)
+	Protocol string `json:"protocol"`
+
+	// Direction of the traffic (ingress/egress)
+	Direction string `json:"direction"`
+
+	// Count is the number of times this rule was observed
+	Count int `json:"count"`
 }
 
 // TrafficFlow represents a single observed traffic pattern

@@ -7,7 +7,9 @@ import (
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,6 +46,7 @@ func NewReconciler(c client.Client, scheme *runtime.Scheme, recorder record.Even
 // +kubebuilder:rbac:groups=security.policy.io,resources=networkpolicygenerators/finalizers,verbs=update
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cilium.io,resources=ciliumnetworkpolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=crd.projectcalico.org,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -186,24 +189,50 @@ func (r *NetworkPolicyGeneratorReconciler) deleteNetworkPolicies(ctx context.Con
 		namespacesToClean = []string{generator.Namespace}
 	}
 
-	for _, ns := range namespacesToClean {
-		np := &networkingv1.NetworkPolicy{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      policy.PolicyName(generator.Name),
-				Namespace: ns,
-			},
-		}
+	engineType := generator.Spec.PolicyEngine
+	if engineType == "" {
+		engineType = policy.EngineKubernetes
+	}
 
-		if err := r.Delete(ctx, np); err != nil {
-			if !apierrors.IsNotFound(err) {
-				log.Error(err, "failed to delete NetworkPolicy", "namespace", ns, "name", np.Name)
+	for _, ns := range namespacesToClean {
+		policyName := policy.PolicyName(generator.Name)
+
+		switch engineType {
+		case policy.EngineKubernetes:
+			np := &networkingv1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: policyName, Namespace: ns},
+			}
+			if err := r.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
+				log.Error(err, "failed to delete NetworkPolicy", "namespace", ns, "name", policyName)
+				return err
+			}
+		case policy.EngineCilium:
+			if err := r.deleteUnstructuredPolicy(ctx, ns, policyName, ciliumGVK()); err != nil {
+				log.Error(err, "failed to delete CiliumNetworkPolicy", "namespace", ns, "name", policyName)
+				return err
+			}
+		case policy.EngineCalico:
+			if err := r.deleteUnstructuredPolicy(ctx, ns, policyName, calicoGVK()); err != nil {
+				log.Error(err, "failed to delete Calico NetworkPolicy", "namespace", ns, "name", policyName)
 				return err
 			}
 		}
 
-		log.Info("Successfully deleted NetworkPolicy", "namespace", ns, "name", np.Name)
+		log.Info("Successfully deleted policy", "engine", engineType, "namespace", ns, "name", policyName)
 	}
 
+	return nil
+}
+
+// deleteUnstructuredPolicy deletes an unstructured policy resource (Cilium/Calico)
+func (r *NetworkPolicyGeneratorReconciler) deleteUnstructuredPolicy(ctx context.Context, ns, name string, gvk schema.GroupVersionKind) error {
+	u := &unstructured.Unstructured{}
+	u.SetGroupVersionKind(gvk)
+	u.SetName(name)
+	u.SetNamespace(ns)
+	if err := r.Delete(ctx, u); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
 	return nil
 }
 

@@ -23,6 +23,8 @@ func NewPolicyEngine(engineType string) (PolicyEngine, error) {
 		return NewKubernetesEngine(), nil
 	case EngineCilium:
 		return NewCiliumEngine(), nil
+	case EngineCalico:
+		return NewCalicoEngine(), nil
 	default:
 		return nil, fmt.Errorf("unsupported policy engine: %s", engineType)
 	}

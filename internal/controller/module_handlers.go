@@ -46,8 +46,15 @@ func (r *NetworkPolicyGeneratorReconciler) handleLearningMode(ctx context.Contex
 		log.Info("Learning period completed, switching to Enforcing mode",
 			"elapsed", elapsed.String(),
 			"duration", generator.Spec.Duration.Duration)
+
+		// Build suggestions from observed traffic before transitioning
+		r.buildLearningSuggestions(generator)
+
 		r.Recorder.Eventf(generator, "Normal", "LearningCompleted",
-			"Learning period completed after %s, switching to Enforcing mode", elapsed.Round(time.Second))
+			"Learning period completed after %s, switching to Enforcing mode (suggested %d namespaces, %d rules)",
+			elapsed.Round(time.Second),
+			len(generator.Status.SuggestedNamespaces),
+			len(generator.Status.SuggestedRules))
 
 		generator.Status.Phase = policy.PhaseEnforcing
 		if err := r.Status().Update(ctx, generator); err != nil {
@@ -67,8 +74,70 @@ func (r *NetworkPolicyGeneratorReconciler) handleLearningMode(ctx context.Contex
 	return ctrl.Result{RequeueAfter: generator.Spec.Duration.Duration - elapsed}, nil
 }
 
+// buildLearningSuggestions analyzes observed traffic and populates suggestions in status
+func (r *NetworkPolicyGeneratorReconciler) buildLearningSuggestions(generator *securityv1.NetworkPolicyGenerator) {
+	traffic := generator.Status.ObservedTraffic
+
+	// Collect unique namespaces from traffic flows
+	nsSet := make(map[string]bool)
+	for _, flow := range traffic {
+		if flow.SourceNamespace != "" && flow.SourceNamespace != generator.Namespace {
+			nsSet[flow.SourceNamespace] = true
+		}
+		if flow.DestNamespace != "" && flow.DestNamespace != generator.Namespace {
+			nsSet[flow.DestNamespace] = true
+		}
+	}
+	var suggestedNS []string
+	for ns := range nsSet {
+		suggestedNS = append(suggestedNS, ns)
+	}
+	generator.Status.SuggestedNamespaces = suggestedNS
+
+	// Collect unique port/protocol/direction rules
+	type ruleKey struct {
+		Port      int32
+		Protocol  string
+		Direction string
+	}
+	ruleCounts := make(map[ruleKey]int)
+	for _, flow := range traffic {
+		if flow.Port > 0 && flow.Protocol != "" {
+			// Ingress: traffic coming TO this namespace
+			if flow.DestNamespace == generator.Namespace {
+				key := ruleKey{Port: flow.Port, Protocol: flow.Protocol, Direction: policy.DirectionIngress}
+				ruleCounts[key]++
+			}
+			// Egress: traffic going FROM this namespace
+			if flow.SourceNamespace == generator.Namespace {
+				key := ruleKey{Port: flow.Port, Protocol: flow.Protocol, Direction: policy.DirectionEgress}
+				ruleCounts[key]++
+			}
+		}
+	}
+
+	var suggestedRules []securityv1.SuggestedRule
+	for key, count := range ruleCounts {
+		suggestedRules = append(suggestedRules, securityv1.SuggestedRule{
+			Port:      key.Port,
+			Protocol:  key.Protocol,
+			Direction: key.Direction,
+			Count:     count,
+		})
+	}
+	generator.Status.SuggestedRules = suggestedRules
+}
+
 // handleEnforcingMode handles the enforcing mode logic
 func (r *NetworkPolicyGeneratorReconciler) handleEnforcingMode(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) (ctrl.Result, error) {
+	// Apply policy template if specified
+	if generator.Spec.TemplateName != "" {
+		tmpl := policy.GetTemplate(generator.Spec.TemplateName)
+		if tmpl != nil {
+			tmpl.Apply(&generator.Spec)
+		}
+	}
+
 	engineType := generator.Spec.PolicyEngine
 	if engineType == "" {
 		engineType = policy.EngineKubernetes
@@ -79,6 +148,8 @@ func (r *NetworkPolicyGeneratorReconciler) handleEnforcingMode(ctx context.Conte
 		return r.handleKubernetesEnforcing(ctx, generator)
 	case policy.EngineCilium:
 		return r.handleCiliumEnforcing(ctx, generator)
+	case policy.EngineCalico:
+		return r.handleCalicoEnforcing(ctx, generator)
 	default:
 		return ctrl.Result{}, fmt.Errorf("unsupported policy engine: %s", engineType)
 	}
@@ -237,6 +308,65 @@ func ciliumGVK() schema.GroupVersionKind {
 		Version: policy.CiliumVersion,
 		Kind:    policy.CiliumKind,
 	}
+}
+
+func calicoGVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   policy.CalicoGroup,
+		Version: policy.CalicoVersion,
+		Kind:    policy.CalicoKind,
+	}
+}
+
+// handleCalicoEnforcing handles enforcing with Calico NetworkPolicy
+func (r *NetworkPolicyGeneratorReconciler) handleCalicoEnforcing(ctx context.Context, generator *securityv1.NetworkPolicyGenerator) (ctrl.Result, error) {
+	log := log.FromContext(ctx)
+
+	engine := policy.NewCalicoEngine()
+	objects, err := engine.GeneratePolicies(generator)
+	if err != nil {
+		r.Recorder.Eventf(generator, "Warning", "GenerationFailed", "Failed to generate Calico NetworkPolicies: %v", err)
+		log.Error(err, "failed to generate Calico NetworkPolicies")
+		return ctrl.Result{}, err
+	}
+
+	// Dry-run mode: store generated policies in status without applying
+	if generator.Spec.DryRun {
+		return r.handleDryRunObjects(ctx, generator, objects)
+	}
+
+	for _, obj := range objects {
+		if err := r.applyCalicoPolicy(ctx, generator, obj); err != nil {
+			r.Recorder.Eventf(generator, "Warning", "ApplyFailed", "Failed to apply Calico NetworkPolicy: %v", err)
+			log.Error(err, "failed to apply Calico NetworkPolicy")
+			return ctrl.Result{}, err
+		}
+	}
+	r.Recorder.Eventf(generator, "Normal", "PoliciesApplied",
+		"Applied %d Calico NetworkPolicy resources", len(objects))
+
+	generator.Status.AppliedPoliciesCount = len(objects)
+	PoliciesApplied.WithLabelValues(generator.Name, generator.Namespace, policy.EngineCalico).Set(float64(len(objects)))
+
+	return r.updateStatusAndRequeue(ctx, generator)
+}
+
+// applyCalicoPolicy creates or updates a Calico NetworkPolicy using unstructured client
+func (r *NetworkPolicyGeneratorReconciler) applyCalicoPolicy(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, obj runtime.Object) error {
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return fmt.Errorf("failed to marshal Calico NetworkPolicy: %w", err)
+	}
+
+	u := &unstructured.Unstructured{}
+	if err := json.Unmarshal(data, &u.Object); err != nil {
+		return fmt.Errorf("failed to unmarshal to unstructured: %w", err)
+	}
+
+	u.SetGroupVersionKind(calicoGVK())
+	u.SetOwnerReferences([]metav1.OwnerReference{ownerReference(generator)})
+
+	return r.createOrUpdate(ctx, u)
 }
 
 // handleDryRun stores generated Kubernetes NetworkPolicies in status without applying

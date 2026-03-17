@@ -1,0 +1,21 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: test-calico-allow
+spec:
+  mode: "enforcing"
+  policyEngine: "calico"
+  policy:
+    type: "allow"
+    deniedNamespaces:
+      - "test-ns1"
+      - "test-ns2"
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      port: 443
+      protocol: TCP
+      direction: "egress"

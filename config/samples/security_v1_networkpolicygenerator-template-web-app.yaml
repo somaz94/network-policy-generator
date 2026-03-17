@@ -1,0 +1,11 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: template-web-app-example
+spec:
+  mode: "enforcing"
+  templateName: "web-app"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"

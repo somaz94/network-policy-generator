@@ -167,7 +167,7 @@ var _ = Describe("Mode Handlers", func() {
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Set invalid engine directly on the object (bypassing CRD validation)
-			generator.Spec.PolicyEngine = "calico"
+			generator.Spec.PolicyEngine = "unknown-engine"
 
 			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
@@ -962,6 +962,265 @@ var _ = Describe("Mode Handlers", func() {
 				}
 			}
 			Expect(hasNamedPort).To(BeTrue())
+		})
+	})
+
+	Context("CalicoGVK helper", func() {
+		It("should return correct GVK", func() {
+			gvk := calicoGVK()
+			Expect(gvk.Group).To(Equal("crd.projectcalico.org"))
+			Expect(gvk.Version).To(Equal("v1"))
+			Expect(gvk.Kind).To(Equal("NetworkPolicy"))
+		})
+	})
+
+	Context("Calico Enforcing Mode", func() {
+		It("should attempt calico policy generation", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// Calico CRD is not installed in envtest, so applyCalicoPolicy will fail
+			_, err := reconciler.handleCalicoEnforcing(ctx, generator)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Context("Calico Enforcing Success Path", func() {
+		It("should successfully apply calico policy with mock client", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-ok",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{
+				Client:     k8sClient,
+				getError:   apierrors.NewNotFound(schema.GroupResource{Group: "crd.projectcalico.org", Resource: "networkpolicies"}, ""),
+				noopCreate: true,
+			}
+			calicoReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			result, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
+		})
+
+		It("should handle calico dry-run mode", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-dryrun",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					DryRun:       true,
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			result, err := reconciler.handleCalicoEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-calico-dryrun", Namespace: namespace,
+			}, generator)).To(Succeed())
+			Expect(generator.Status.GeneratedPolicies).NotTo(BeEmpty())
+			Expect(generator.Status.AppliedPoliciesCount).To(Equal(0))
+		})
+	})
+
+	Context("Calico Enforcing via handleEnforcingMode", func() {
+		It("should dispatch to calico engine", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-dispatch",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// handleEnforcingMode should dispatch to handleCalicoEnforcing
+			// Calico CRD not installed, so it will fail at apply time
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Context("Policy Template Integration", func() {
+		It("should apply template rules in enforcing mode", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-template",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					TemplateName: "web-app",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Check the generated NetworkPolicy has ingress rules from web-app template
+			np := &networkingv1.NetworkPolicy{}
+			Eventually(func() error {
+				return k8sClient.Get(ctx, types.NamespacedName{
+					Name:      generatorName + "-template-generated",
+					Namespace: namespace,
+				}, np)
+			}, timeout, interval).Should(Succeed())
+
+			// web-app template adds port 80 and 443 ingress rules
+			Expect(np.Spec.Ingress).NotTo(BeEmpty())
+		})
+
+		It("should not modify spec when template is empty", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-no-template")
+			generator.Spec.Mode = "enforcing"
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			originalRules := len(generator.Spec.GlobalRules)
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(generator.Spec.GlobalRules)).To(Equal(originalRules))
+		})
+
+		It("should not modify spec when template name is invalid", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-bad-template")
+			generator.Spec.Mode = "enforcing"
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// Set invalid template name after creation to bypass CRD validation
+			generator.Spec.TemplateName = "nonexistent"
+
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("Learning Mode Suggestions", func() {
+		It("should build suggestions from observed traffic", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-suggest")
+			generator.Spec.Duration = metav1.Duration{Duration: 1 * time.Second}
+			generator.Status.ObservedTraffic = []securityv1.TrafficFlow{
+				{
+					SourceNamespace: "external-ns",
+					DestNamespace:   namespace,
+					Protocol:        "TCP",
+					Port:            80,
+				},
+				{
+					SourceNamespace: namespace,
+					DestNamespace:   "db-ns",
+					Protocol:        "TCP",
+					Port:            5432,
+				},
+				{
+					SourceNamespace: "monitoring-ns",
+					DestNamespace:   namespace,
+					Protocol:        "TCP",
+					Port:            9090,
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// Initial setup
+			_, err := reconciler.handleLearningMode(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Re-fetch and set time to past
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-suggest", Namespace: namespace,
+			}, generator)).To(Succeed())
+			generator.Status.LastAnalyzed = metav1.NewTime(time.Now().Add(-5 * time.Second))
+			generator.Status.ObservedTraffic = []securityv1.TrafficFlow{
+				{
+					SourceNamespace: "external-ns",
+					DestNamespace:   namespace,
+					Protocol:        "TCP",
+					Port:            80,
+				},
+				{
+					SourceNamespace: namespace,
+					DestNamespace:   "db-ns",
+					Protocol:        "TCP",
+					Port:            5432,
+				},
+			}
+			Expect(k8sClient.Status().Update(ctx, generator)).To(Succeed())
+
+			// Transition should build suggestions
+			result, err := reconciler.handleLearningMode(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Requeue).To(BeTrue())
+
+			// Should have suggested namespaces
+			Expect(generator.Status.SuggestedNamespaces).To(ContainElement("external-ns"))
+			Expect(generator.Status.SuggestedNamespaces).To(ContainElement("db-ns"))
+			// Own namespace should not be suggested
+			Expect(generator.Status.SuggestedNamespaces).NotTo(ContainElement(namespace))
+
+			// Should have suggested rules
+			Expect(generator.Status.SuggestedRules).NotTo(BeEmpty())
+		})
+
+		It("should handle empty traffic gracefully", func() {
+			generator := createBasicGenerator(namespace, generatorName+"-no-traffic")
+			generator.Status.ObservedTraffic = nil
+
+			reconciler.buildLearningSuggestions(generator)
+
+			Expect(generator.Status.SuggestedNamespaces).To(BeEmpty())
+			Expect(generator.Status.SuggestedRules).To(BeEmpty())
 		})
 	})
 

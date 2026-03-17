@@ -57,8 +57,8 @@ func validateGenerator(gen *NetworkPolicyGenerator) (admission.Warnings, error) 
 	}
 
 	// Validate policy engine
-	if gen.Spec.PolicyEngine != "" && gen.Spec.PolicyEngine != "kubernetes" && gen.Spec.PolicyEngine != "cilium" {
-		return nil, fmt.Errorf("spec.policyEngine must be 'kubernetes' or 'cilium', got %q", gen.Spec.PolicyEngine)
+	if gen.Spec.PolicyEngine != "" && gen.Spec.PolicyEngine != "kubernetes" && gen.Spec.PolicyEngine != "cilium" && gen.Spec.PolicyEngine != "calico" {
+		return nil, fmt.Errorf("spec.policyEngine must be 'kubernetes', 'cilium', or 'calico', got %q", gen.Spec.PolicyEngine)
 	}
 
 	// Validate namespace overlap

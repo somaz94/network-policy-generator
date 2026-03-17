@@ -1,0 +1,13 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: template-database-example
+spec:
+  mode: "enforcing"
+  templateName: "database"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "backend-ns"
+    podSelector:
+      app: postgres

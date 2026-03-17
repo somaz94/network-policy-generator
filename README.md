@@ -24,7 +24,9 @@ This tool helps security teams and cluster administrators implement network segm
 - Providing data-driven policy recommendations based on real traffic
 - Supporting both permissive (allow-based) and restrictive (deny-based) policy approaches
 - Enabling gradual transition from learning to enforcement phases
-- Supporting multiple CNI backends via `policyEngine` field (`kubernetes`, `cilium`)
+- Supporting multiple CNI backends via `policyEngine` field (`kubernetes`, `cilium`, `calico`)
+- Providing built-in policy templates for common workload types (web-app, database, monitoring, etc.)
+- Generating namespace and rule suggestions from observed traffic during learning mode
 
 ### Key Features
 
@@ -35,6 +37,8 @@ This tool helps security teams and cluster administrators implement network segm
 ![Policy Diff](https://img.shields.io/badge/Policy_Diff/Audit-green?logo=kubernetes&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes_NetworkPolicy-326CE5?logo=kubernetes&logoColor=white)
 ![Cilium](https://img.shields.io/badge/Cilium_NetworkPolicy-F8C517?logo=cilium&logoColor=black)
+![Calico](https://img.shields.io/badge/Calico_NetworkPolicy-FF6D00?logo=kubernetes&logoColor=white)
+![Policy Templates](https://img.shields.io/badge/Policy_Templates-teal?logo=kubernetes&logoColor=white)
 ![Learning Mode](https://img.shields.io/badge/Learning_Mode-orange?logo=kubernetes&logoColor=white)
 ![Event Recording](https://img.shields.io/badge/Event_Recording-purple?logo=kubernetes&logoColor=white)
 ![Prometheus Metrics](https://img.shields.io/badge/Prometheus_Metrics-E6522C?logo=prometheus&logoColor=white)
@@ -59,6 +63,7 @@ This tool helps security teams and cluster administrators implement network segm
 - Kubernetes v1.16+
 - kubectl v1.11.3+
 - For Cilium policies: Cilium CNI installed on the cluster
+- For Calico policies: Calico CNI installed on the cluster
 
 <br/>
 
@@ -143,6 +148,10 @@ Available sample configurations:
 - `security_v1_networkpolicygenerator-named-port.yaml`: Named port (`http`, `grpc`) example
 - `security_v1_networkpolicygenerator-dry-run.yaml`: Dry run mode (preview without applying)
 - `security_v1_networkpolicygenerator-full-features.yaml`: All features combined
+- `security_v1_networkpolicygenerator-calico-deny.yaml`: Calico deny policy
+- `security_v1_networkpolicygenerator-calico-allow.yaml`: Calico allow policy
+- `security_v1_networkpolicygenerator-template-web-app.yaml`: Web-app policy template
+- `security_v1_networkpolicygenerator-template-database.yaml`: Database policy template
 - `test-policy.yaml`: Namespace-specific policy examples
 - `test.yaml`: Test pods and services for validation
 
@@ -379,6 +388,91 @@ Generated policies are stored in `.status.generatedPolicies` as JSON. No Network
 
 <br/>
 
+### 9. Calico NetworkPolicy
+Generate Calico-native `crd.projectcalico.org/v1` NetworkPolicy resources:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: calico-deny-example
+spec:
+  mode: "enforcing"
+  policyEngine: "calico"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+    podSelector:
+      app: web
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+```
+
+Calico policies use selector-based syntax (`app == 'web'`), namespace selectors via `projectcalico.org/name`, and include automatic DNS egress allow rules.
+
+<br/>
+
+### 10. Policy Templates
+Use built-in templates for common workload types instead of writing rules from scratch:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: template-web-app-example
+spec:
+  mode: "enforcing"
+  templateName: "web-app"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "kube-system"
+```
+
+Available templates:
+| Template | Description |
+|----------|-------------|
+| `zero-trust` | Deny all traffic, allow only DNS egress |
+| `web-app` | Allow HTTP/HTTPS ingress, DNS and HTTPS egress |
+| `backend-api` | Allow API ports (8080, 8443, 9090) ingress, HTTPS egress |
+| `database` | Allow DB ports (3306, 5432, 6379, 27017) ingress, DNS-only egress |
+| `monitoring` | Allow Prometheus scraping (9090, 9100), HTTPS egress |
+
+Templates are merged with user-defined `globalRules` (user rules take precedence over template rules).
+
+<br/>
+
+### 11. Learning Mode with Suggestions
+Learning mode now generates namespace and rule suggestions based on observed traffic:
+
+```yaml
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: traffic-learner-improved
+spec:
+  mode: "learning"
+  duration: "5m"
+  policy:
+    type: "deny"
+```
+
+After the learning period, check suggestions:
+
+```bash
+# View suggested namespaces from observed traffic
+kubectl get networkpolicygenerator traffic-learner-improved -o jsonpath='{.status.suggestedNamespaces}'
+
+# View suggested port/protocol rules with observation counts
+kubectl get networkpolicygenerator traffic-learner-improved -o jsonpath='{.status.suggestedRules}'
+```
+
+<br/>
+
 ### Monitoring the Generator Status
 ```sh
 # View all NetworkPolicyGenerator resources
@@ -403,11 +497,13 @@ make test
 make test-integration                      # All engines
 make test-integration ENGINE=kubernetes    # Kubernetes only
 make test-integration ENGINE=cilium        # Cilium only
+make test-integration ENGINE=calico        # Calico only
 
 # Helm chart tests (lint, install, upgrade, policy tests, uninstall)
 make test-helm                             # All engines
 make test-helm ENGINE=kubernetes           # Kubernetes only
 make test-helm ENGINE=cilium               # Cilium only
+make test-helm ENGINE=calico               # Calico only
 ```
 
 For detailed manual test steps and sample descriptions, see [Test Guide](docs/TESTING.md).

@@ -7,6 +7,7 @@
 - Kubernetes cluster (Kind, Minikube, EKS, GKE, etc.)
 - `kubectl` configured
 - For Cilium tests: Cilium CNI installed on the cluster
+- For Calico tests: Calico CNI installed on the cluster
 
 <br/>
 
@@ -56,6 +57,9 @@ make test-integration ENGINE=kubernetes
 # Cilium engine only
 make test-integration ENGINE=cilium
 
+# Calico engine only
+make test-integration ENGINE=calico
+
 # All engines (default)
 make test-integration ENGINE=all
 ```
@@ -79,6 +83,9 @@ make test-helm ENGINE=kubernetes
 # Cilium engine only
 make test-helm ENGINE=cilium
 
+# Calico engine only
+make test-helm ENGINE=calico
+
 # All engines (default)
 make test-helm ENGINE=all
 ```
@@ -87,7 +94,8 @@ Test coverage:
 - Helm lint, template render, package
 - Helm install & release verification
 - Controller pod, CRD, RBAC, Service verification
-- Kubernetes/Cilium NetworkPolicy CR tests (same as integration)
+- Kubernetes/Cilium/Calico NetworkPolicy CR tests (same as integration)
+- Policy Template tests (web-app, database)
 - Helm upgrade test
 - Helm uninstall & CRD cleanup hook verification
 
@@ -423,6 +431,152 @@ Expected: admission webhook should reject with `Unsupported value: "invalid"`.
 
 ---
 
+## 6-3. Calico NetworkPolicy Tests
+
+> **Requires Calico CNI installed on the cluster**
+
+<br/>
+
+### Test G: Calico Deny Policy
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-calico-deny.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies.crd.projectcalico.org -n test-ns1
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+<br/>
+
+### Test H: Calico Allow Policy
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-calico-allow.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies.crd.projectcalico.org -n test-ns1
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+---
+
+## 6-4. Policy Template Tests
+
+<br/>
+
+### Test I: Web-App Template
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-template-web-app.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies -n test-ns1
+# Verify template rules (port 80, 443) are applied
+kubectl get networkpolicy -n test-ns1 -o yaml | grep -A2 port
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+<br/>
+
+### Test J: Database Template
+
+```bash
+kubectl apply -f config/samples/security_v1_networkpolicygenerator-template-database.yaml -n test-ns1
+```
+
+Check:
+
+```bash
+kubectl get networkpolicygenerators -n test-ns1
+kubectl get networkpolicies -n test-ns1
+# Verify DB port rules (5432, 3306, etc.) are applied
+kubectl get networkpolicy -n test-ns1 -o yaml | grep -A2 port
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+---
+
+## 6-5. Learning Mode Suggestion Tests
+
+<br/>
+
+### Test K: Learning Mode with Suggestions
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: test-learning-suggestions
+  namespace: test-ns1
+spec:
+  mode: "learning"
+  duration: "30s"
+  policy:
+    type: "deny"
+EOF
+```
+
+Check:
+
+```bash
+# Should be "Learning" phase
+kubectl get networkpolicygenerators -n test-ns1
+
+# Wait 35 seconds for transition
+sleep 35
+
+# Should be "Enforcing" phase with suggestions
+kubectl get networkpolicygenerators -n test-ns1
+
+# Check suggested namespaces
+kubectl get networkpolicygenerator test-learning-suggestions -n test-ns1 -o jsonpath='{.status.suggestedNamespaces}'
+
+# Check suggested rules
+kubectl get networkpolicygenerator test-learning-suggestions -n test-ns1 -o jsonpath='{.status.suggestedRules}'
+```
+
+Cleanup:
+
+```bash
+kubectl delete networkpolicygenerators -n test-ns1 --all
+```
+
+---
+
 ## 7. Cilium NetworkPolicy Tests
 
 > **Requires Cilium CNI installed on the cluster**
@@ -540,5 +694,9 @@ make undeploy
 | `security_v1_networkpolicygenerator-full-features.yaml` | kubernetes (default) | deny | All features combined |
 | `security_v1_networkpolicygenerator-cilium-allow.yaml` | cilium | allow | Cilium allow policy |
 | `security_v1_networkpolicygenerator-cilium-deny.yaml` | cilium | deny | Cilium deny policy |
+| `security_v1_networkpolicygenerator-calico-allow.yaml` | calico | allow | Calico allow policy |
+| `security_v1_networkpolicygenerator-calico-deny.yaml` | calico | deny | Calico deny policy |
+| `security_v1_networkpolicygenerator-template-web-app.yaml` | kubernetes (default) | deny | Web-app template (ports 80, 443) |
+| `security_v1_networkpolicygenerator-template-database.yaml` | kubernetes (default) | deny | Database template (ports 3306, 5432, 6379, 27017) |
 | `test.yaml` | - | - | Test pods (nginx) and services |
 | `test-policy.yaml` | kubernetes (default) | deny | Multi-namespace test |

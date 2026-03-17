@@ -34,6 +34,7 @@ const (
 	// Policy engine types
 	EngineKubernetes = "kubernetes"
 	EngineCilium     = "cilium"
+	EngineCalico     = "calico"
 
 	// Cilium-specific
 	EntityWorld      = "world"
@@ -41,6 +42,15 @@ const (
 	CiliumKind       = "CiliumNetworkPolicy"
 	CiliumGroup      = "cilium.io"
 	CiliumVersion    = "v2"
+
+	// Calico-specific
+	CalicoAPIVersion   = "crd.projectcalico.org/v1"
+	CalicoKind         = "NetworkPolicy"
+	CalicoGroup        = "crd.projectcalico.org"
+	CalicoVersion      = "v1"
+	CalicoActionAllow  = "Allow"
+	CalicoActionDeny   = "Deny"
+	CalicoDefaultOrder = float64(100)
 
 	// Policy naming
 	PolicyNameSuffix = "-generated"

@@ -80,6 +80,13 @@ check_cilium() {
   return 1
 }
 
+check_calico() {
+  if kubectl get crd networkpolicies.crd.projectcalico.org >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
 # curl_test <from_pod> <from_ns> <target_svc> <target_ns> <expect: pass|fail> <test_label>
 # Uses ClusterIP to bypass DNS. Retries up to 5 times with 5s intervals for policy propagation.
 curl_test() {
@@ -561,6 +568,106 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
   else
     log_skip "Cilium CRD not found, skipping Cilium tests"
   fi
+fi
+
+# ============================================================
+# Calico Engine Tests
+# ============================================================
+if [[ "$ENGINE" == "all" || "$ENGINE" == "calico" ]]; then
+  echo ""
+  if check_calico; then
+    log_info "--- Calico NetworkPolicy Tests (Helm) ---"
+
+    # Test: Calico Deny Policy
+    log_info "[Test] Calico Deny Policy"
+    kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-calico-deny.yaml" -n test-ns1
+    if wait_for_phase test-ns1 "Enforcing"; then
+      log_pass "Calico Deny: CR created with Enforcing phase"
+    else
+      log_fail "Calico Deny: CR not in Enforcing phase"
+    fi
+    if wait_for_resource "networkpolicies.crd.projectcalico.org" "test-ns1" 10; then
+      log_pass "Calico Deny: Calico NetworkPolicy generated"
+    else
+      log_fail "Calico Deny: Calico NetworkPolicy not generated"
+    fi
+    cleanup_cr
+    sleep 2
+    if ! kubectl get networkpolicies.crd.projectcalico.org -n test-ns1 2>/dev/null | grep -q "generated"; then
+      log_pass "Calico Deny: Finalizer cleanup successful"
+    else
+      log_fail "Calico Deny: Finalizer cleanup failed"
+    fi
+
+    # Test: Calico Allow Policy
+    log_info "[Test] Calico Allow Policy"
+    kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-calico-allow.yaml" -n test-ns1
+    if wait_for_phase test-ns1 "Enforcing"; then
+      log_pass "Calico Allow: CR created with Enforcing phase"
+    else
+      log_fail "Calico Allow: CR not in Enforcing phase"
+    fi
+    if wait_for_resource "networkpolicies.crd.projectcalico.org" "test-ns1" 10; then
+      log_pass "Calico Allow: Calico NetworkPolicy generated"
+    else
+      log_fail "Calico Allow: Calico NetworkPolicy not generated"
+    fi
+    cleanup_cr
+  else
+    log_skip "Calico CRD not found, skipping Calico tests"
+  fi
+fi
+
+# ============================================================
+# Policy Template Tests (Kubernetes Engine)
+# ============================================================
+if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
+  echo ""
+  log_info "--- Policy Template Tests (Helm) ---"
+
+  # Test: Web-App Template
+  log_info "[Test] Web-App Template"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-template-web-app.yaml" -n test-ns1
+  if wait_for_phase test-ns1 "Enforcing"; then
+    log_pass "Template Web-App: CR created with Enforcing phase"
+  else
+    log_fail "Template Web-App: CR not in Enforcing phase"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "Template Web-App: NetworkPolicy generated"
+    NP_JSON=$(kubectl get networkpolicy -n test-ns1 -o json 2>/dev/null)
+    if echo "$NP_JSON" | grep -q '"80"\|80'; then
+      log_pass "Template Web-App: Port 80 ingress rule found"
+    else
+      log_fail "Template Web-App: Port 80 ingress rule not found"
+    fi
+  else
+    log_fail "Template Web-App: NetworkPolicy not generated"
+  fi
+  cleanup_cr
+  sleep 2
+
+  # Test: Database Template
+  log_info "[Test] Database Template"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-template-database.yaml" -n test-ns1
+  if wait_for_phase test-ns1 "Enforcing"; then
+    log_pass "Template Database: CR created with Enforcing phase"
+  else
+    log_fail "Template Database: CR not in Enforcing phase"
+  fi
+  if wait_for_resource "networkpolicies" "test-ns1" 10; then
+    log_pass "Template Database: NetworkPolicy generated"
+    NP_JSON=$(kubectl get networkpolicy -n test-ns1 -o json 2>/dev/null)
+    if echo "$NP_JSON" | grep -q "5432"; then
+      log_pass "Template Database: PostgreSQL port 5432 rule found"
+    else
+      log_fail "Template Database: PostgreSQL port 5432 rule not found"
+    fi
+  else
+    log_fail "Template Database: NetworkPolicy not generated"
+  fi
+  cleanup_cr
+  sleep 2
 fi
 
 # ============================================================

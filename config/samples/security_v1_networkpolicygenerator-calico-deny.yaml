@@ -1,0 +1,20 @@
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: test-calico-deny
+spec:
+  mode: "enforcing"
+  policyEngine: "calico"
+  policy:
+    type: "deny"
+    allowedNamespaces:
+      - "test-ns3"
+  globalRules:
+    - type: "allow"
+      port: 80
+      protocol: TCP
+      direction: "ingress"
+    - type: "allow"
+      port: 443
+      protocol: TCP
+      direction: "egress"

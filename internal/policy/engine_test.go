@@ -29,8 +29,14 @@ func TestNewPolicyEngine(t *testing.T) {
 		assert.Equal(t, "cilium", engine.EngineName())
 	})
 
-	t.Run("Unsupported engine", func(t *testing.T) {
+	t.Run("Calico engine", func(t *testing.T) {
 		engine, err := NewPolicyEngine("calico")
+		require.NoError(t, err)
+		assert.Equal(t, "calico", engine.EngineName())
+	})
+
+	t.Run("Unsupported engine", func(t *testing.T) {
+		engine, err := NewPolicyEngine("unknown")
 		assert.Error(t, err)
 		assert.Nil(t, engine)
 		assert.Contains(t, err.Error(), "unsupported policy engine")

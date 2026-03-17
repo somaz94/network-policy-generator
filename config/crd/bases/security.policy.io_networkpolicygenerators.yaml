@@ -172,6 +172,20 @@ spec:
                 enum:
                 - kubernetes
                 - cilium
+                - calico
+                type: string
+              templateName:
+                description: |-
+                  TemplateName specifies a built-in policy template to use as a base
+                  Available templates: zero-trust, web-app, backend-api, database, monitoring
+                  Template rules are merged with user-defined globalRules (user rules take precedence)
+                enum:
+                - zero-trust
+                - web-app
+                - backend-api
+                - database
+                - monitoring
+                - ""
                 type: string
             required:
             - policy
@@ -249,6 +263,40 @@ spec:
                   - namespace
                   - policyName
                   - timestamp
+                  type: object
+                type: array
+              suggestedNamespaces:
+                description: |-
+                  SuggestedNamespaces contains namespace names observed during learning mode
+                  These can be used as allowedNamespaces when transitioning to enforcing
+                items:
+                  type: string
+                type: array
+              suggestedRules:
+                description: SuggestedRules contains port/protocol rules observed
+                  during learning mode
+                items:
+                  description: SuggestedRule represents a port/protocol rule suggested
+                    by learning mode
+                  properties:
+                    count:
+                      description: Count is the number of times this rule was observed
+                      type: integer
+                    direction:
+                      description: Direction of the traffic (ingress/egress)
+                      type: string
+                    port:
+                      description: Port number observed
+                      format: int32
+                      type: integer
+                    protocol:
+                      description: Protocol observed (TCP/UDP)
+                      type: string
+                  required:
+                  - count
+                  - direction
+                  - port
+                  - protocol
                   type: object
                 type: array
             type: object
