@@ -380,13 +380,20 @@ kubectl delete networkpolicygenerators -n test-ns1 --all
 ### Test D-7: Prometheus Metrics
 
 ```bash
-# Get controller pod name
-METRICS_POD=$(kubectl get pod -l control-plane=controller-manager \
-  -n network-policy-generator-system -o jsonpath='{.items[0].metadata.name}')
+NAMESPACE="network-policy-generator-system"
+METRICS_SVC="network-policy-generator-controller-manager-metrics-service"
 
-# Check custom metrics
-kubectl exec $METRICS_POD -n network-policy-generator-system -- \
-  curl -s http://localhost:8080/metrics | grep npg_
+# Port-forward metrics service (controller uses distroless image without curl)
+kubectl port-forward -n "$NAMESPACE" "svc/${METRICS_SVC}" 18443:8443 &
+PF_PID=$!
+sleep 2
+
+# Create SA token and fetch metrics
+TOKEN=$(kubectl create token network-policy-generator-controller-manager -n "$NAMESPACE")
+curl -sk -H "Authorization: Bearer ${TOKEN}" https://localhost:18443/metrics | grep npg_
+
+# Cleanup
+kill $PF_PID
 ```
 
 Expected metrics: `npg_reconcile_total`, `npg_reconcile_duration_seconds`, `npg_policies_applied`, `npg_policy_operations_total`, `npg_generators_active`, `npg_dry_run_total`, `npg_validation_errors_total`
