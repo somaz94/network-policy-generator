@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-03-16)
+## Unreleased (2026-03-17)
+
+### Features
+
+- add pod selector, CIDR rules, named port, dry-run, and policy diff ([1a0aabc](https://github.com/somaz94/network-policy-generator/commit/1a0aabccd853b981ca5ab550b7bc9c5d618644a8))
 
 ### Bug Fixes
 
@@ -19,23 +23,32 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
+- add new features documentation to README, HELM, and TESTING guides ([d89f875](https://github.com/somaz94/network-policy-generator/commit/d89f87536f2b769917b6fedaf539708737d4a6f8))
+- update changelog ([2a79503](https://github.com/somaz94/network-policy-generator/commit/2a795031e52bb5ef39f6a81dd57536e73721e500))
 - add dist/install.yaml and e2e test documentation ([5f5c7eb](https://github.com/somaz94/network-policy-generator/commit/5f5c7eb3bea839a751ba38af72d9573d764d5de8))
 - update changelog ([07ad8d5](https://github.com/somaz94/network-policy-generator/commit/07ad8d527b2a34fc6b6de0e1fc1d3c29a33b2980))
 
 ### Continuous Integration
 
+- use somaz94/contributors-action@v1 for contributors generation ([a3ddc09](https://github.com/somaz94/network-policy-generator/commit/a3ddc09d3a325dc8362245c51b41ecef40035126))
+- use major-tag-action for version tag updates ([206cbcb](https://github.com/somaz94/network-policy-generator/commit/206cbcb32a7ca227ec15824d9b4e44c3e0cedf75))
 - migrate changelog generator to go-changelog-action ([ada06c0](https://github.com/somaz94/network-policy-generator/commit/ada06c06571e4d94636b56d6d57dbc33122f7713))
 - unify changelog-generator with flexible tag pattern ([ec49933](https://github.com/somaz94/network-policy-generator/commit/ec49933d0672b5cb47cfe3c1439cb034c25ae43c))
 
 ### Chores
 
+- bump version to v0.2.0 and add version bump script ([f7d33b0](https://github.com/somaz94/network-policy-generator/commit/f7d33b0464dbf9ca4b272632b343cc2883342d1e))
 - change license from MIT to Apache 2.0 ([0721f6e](https://github.com/somaz94/network-policy-generator/commit/0721f6e1ca0c0469942215c0756b838c721ecba5))
+- **deps:** bump the go-minor group with 8 updates ([56e8f7a](https://github.com/somaz94/network-policy-generator/commit/56e8f7a0f9652be6b6af9d3f9a7ad3717ab4369f))
 
 ### Contributors
 
 - GitHub Action
 - GitHub Actions
+- dependabot[bot]
 - somaz
+
+<br/>
 
 ## [v0.1.2](https://github.com/somaz94/network-policy-generator/compare/v0.1.1...v0.1.2) (2026-03-11)
 
@@ -65,6 +78,8 @@ All notable changes to this project will be documented in this file.
 - GitHub Actions
 - somaz
 
+<br/>
+
 ## [v0.1.1](https://github.com/somaz94/network-policy-generator/compare/v0.1.0...v0.1.1) (2026-03-11)
 
 ### Bug Fixes
@@ -87,6 +102,8 @@ All notable changes to this project will be documented in this file.
 
 - GitHub Action
 - somaz
+
+<br/>
 
 ## [v0.1.0](https://github.com/somaz94/network-policy-generator/compare/v0.0.1...v0.1.0) (2026-03-11)
 
@@ -150,9 +167,13 @@ All notable changes to this project will be documented in this file.
 - dependabot[bot]
 - somaz
 
-## v0.0.1 (2024-12-23)
+<br/>
+
+## [v0.0.1](https://github.com/somaz94/network-policy-generator/releases/tag/v0.0.1) (2024-12-23)
 
 ### Contributors
 
 - somaz
+
+<br/>
 
