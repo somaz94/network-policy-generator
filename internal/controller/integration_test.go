@@ -10,6 +10,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
@@ -42,6 +43,7 @@ var _ = Describe("NetworkPolicyGenerator Integration", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			// Create test namespaces

@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/somaz94/network-policy-generator/internal/policy"
@@ -39,6 +40,7 @@ var _ = Describe("Mode Handlers", func() {
 			Scheme:    k8sClient.Scheme(),
 			Generator: policy.NewGenerator(),
 			Validator: policy.NewValidator(),
+			Recorder:  record.NewFakeRecorder(100),
 		}
 	})
 
@@ -175,7 +177,7 @@ var _ = Describe("Mode Handlers", func() {
 
 	Context("NewReconciler", func() {
 		It("should create reconciler with initialized fields", func() {
-			r := NewReconciler(k8sClient, k8sClient.Scheme())
+			r := NewReconciler(k8sClient, k8sClient.Scheme(), record.NewFakeRecorder(100))
 			Expect(r).NotTo(BeNil())
 			Expect(r.Client).NotTo(BeNil())
 			Expect(r.Scheme).NotTo(BeNil())
@@ -256,6 +258,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := errReconciler.handleLearningMode(ctx, generator)
@@ -288,6 +291,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err = errReconciler.handleLearningMode(ctx, generator)
@@ -308,6 +312,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
@@ -323,7 +328,7 @@ var _ = Describe("Mode Handlers", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			r := NewReconciler(mgr.GetClient(), mgr.GetScheme())
+			r := NewReconciler(mgr.GetClient(), mgr.GetScheme(), record.NewFakeRecorder(100))
 			err = r.SetupWithManager(mgr)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -455,6 +460,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err = errReconciler.handleLearningMode(ctx, generator)
@@ -476,6 +482,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := errReconciler.Reconcile(ctx, ctrl.Request{
@@ -502,6 +509,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
@@ -521,6 +529,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
@@ -590,6 +599,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err = errReconciler.Reconcile(ctx, ctrl.Request{
@@ -629,6 +639,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err = errReconciler.Reconcile(ctx, ctrl.Request{
@@ -654,6 +665,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := errReconciler.Reconcile(ctx, ctrl.Request{
@@ -706,6 +718,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
@@ -771,6 +784,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := errReconciler.handleCiliumEnforcing(ctx, generator)
@@ -981,6 +995,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			result, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
@@ -1017,6 +1032,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			result, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
@@ -1053,6 +1069,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
@@ -1088,6 +1105,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
@@ -1125,6 +1143,7 @@ var _ = Describe("Mode Handlers", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)

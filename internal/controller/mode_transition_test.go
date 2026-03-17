@@ -10,6 +10,7 @@ import (
 	"github.com/somaz94/network-policy-generator/internal/policy"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -28,6 +29,7 @@ var _ = Describe("Mode Transition Tests", func() {
 			Scheme:    k8sClient.Scheme(),
 			Generator: policy.NewGenerator(),
 			Validator: policy.NewValidator(),
+			Recorder:  record.NewFakeRecorder(100),
 		}
 	})
 

@@ -3,10 +3,12 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -23,15 +25,17 @@ type NetworkPolicyGeneratorReconciler struct {
 	Scheme    *runtime.Scheme
 	Generator *policy.Generator
 	Validator *policy.Validator
+	Recorder  record.EventRecorder
 }
 
 // NewReconciler creates a new NetworkPolicyGeneratorReconciler
-func NewReconciler(c client.Client, scheme *runtime.Scheme) *NetworkPolicyGeneratorReconciler {
+func NewReconciler(c client.Client, scheme *runtime.Scheme, recorder record.EventRecorder) *NetworkPolicyGeneratorReconciler {
 	return &NetworkPolicyGeneratorReconciler{
 		Client:    c,
 		Scheme:    scheme,
 		Generator: policy.NewGenerator(),
 		Validator: policy.NewValidator(),
+		Recorder:  recorder,
 	}
 }
 
@@ -42,6 +46,7 @@ func NewReconciler(c client.Client, scheme *runtime.Scheme) *NetworkPolicyGenera
 // +kubebuilder:rbac:groups=cilium.io,resources=ciliumnetworkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 const (
 	finalizerName = "security.policy.io/finalizer"
@@ -50,6 +55,7 @@ const (
 func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	log.Info("Starting reconciliation", "namespacedName", req.NamespacedName)
+	startTime := time.Now()
 
 	generator := &securityv1.NetworkPolicyGenerator{}
 	if err := r.Get(ctx, req.NamespacedName, generator); err != nil {
@@ -79,6 +85,9 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 		}
 	}
 
+	// Track active generators
+	GeneratorsActive.WithLabelValues(generator.Status.Phase).Set(1)
+
 	// Handle mode
 	var result ctrl.Result
 	var err error
@@ -95,10 +104,16 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 		return ctrl.Result{}, fmt.Errorf("invalid mode: %s", generator.Spec.Mode)
 	}
 
+	// Record metrics
+	duration := time.Since(startTime).Seconds()
+	ReconcileDuration.WithLabelValues(generator.Spec.Mode).Observe(duration)
+
 	if err != nil {
+		ReconcileTotal.WithLabelValues("error").Inc()
 		log.Error(err, "failed to handle mode", "mode", generator.Spec.Mode, "name", generator.Name)
 		return ctrl.Result{}, err
 	}
+	ReconcileTotal.WithLabelValues("success").Inc()
 
 	log.Info("Completed reconciliation",
 		"name", generator.Name,
@@ -124,6 +139,8 @@ func (r *NetworkPolicyGeneratorReconciler) syncPhase(ctx context.Context, genera
 	if oldPhase != generator.Status.Phase {
 		log.Info("Phase changed", "oldPhase", oldPhase, "newPhase", generator.Status.Phase,
 			"name", generator.Name, "namespace", generator.Namespace)
+		r.Recorder.Eventf(generator, "Normal", "PhaseChanged",
+			"Phase changed from %s to %s", oldPhase, generator.Status.Phase)
 	}
 
 	if err := r.Status().Update(ctx, generator); err != nil {
@@ -141,9 +158,13 @@ func (r *NetworkPolicyGeneratorReconciler) handleDeletion(ctx context.Context, g
 
 	if controllerutil.ContainsFinalizer(generator, finalizerName) {
 		if err := r.deleteNetworkPolicies(ctx, generator); err != nil {
+			r.Recorder.Eventf(generator, "Warning", "CleanupFailed", "Failed to delete NetworkPolicies: %v", err)
 			log.Error(err, "failed to delete NetworkPolicies")
 			return ctrl.Result{}, err
 		}
+		r.Recorder.Event(generator, "Normal", "PoliciesDeleted", "All generated NetworkPolicies deleted")
+		PolicyOperations.WithLabelValues("Deleted").Inc()
+		PoliciesApplied.DeleteLabelValues(generator.Name, generator.Namespace, generator.Spec.PolicyEngine)
 		controllerutil.RemoveFinalizer(generator, finalizerName)
 		if err := r.Update(ctx, generator); err != nil {
 			log.Error(err, "failed to remove finalizer")

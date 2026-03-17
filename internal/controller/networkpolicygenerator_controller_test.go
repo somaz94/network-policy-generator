@@ -26,6 +26,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -69,6 +70,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			result, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -134,6 +136,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			By("Reconciling and waiting for finalizer")
@@ -191,6 +194,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -241,6 +245,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 				Scheme:    k8sClient.Scheme(),
 				Generator: policy.NewGenerator(),
 				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
 			}
 
 			// Wait for deletion timestamp to be set

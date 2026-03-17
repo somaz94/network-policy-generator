@@ -46,6 +46,8 @@ func (r *NetworkPolicyGeneratorReconciler) handleLearningMode(ctx context.Contex
 		log.Info("Learning period completed, switching to Enforcing mode",
 			"elapsed", elapsed.String(),
 			"duration", generator.Spec.Duration.Duration)
+		r.Recorder.Eventf(generator, "Normal", "LearningCompleted",
+			"Learning period completed after %s, switching to Enforcing mode", elapsed.Round(time.Second))
 
 		generator.Status.Phase = policy.PhaseEnforcing
 		if err := r.Status().Update(ctx, generator); err != nil {
@@ -88,12 +90,15 @@ func (r *NetworkPolicyGeneratorReconciler) handleKubernetesEnforcing(ctx context
 
 	policies, err := r.Generator.GenerateNetworkPolicies(generator)
 	if err != nil {
+		r.Recorder.Eventf(generator, "Warning", "GenerationFailed", "Failed to generate NetworkPolicies: %v", err)
 		log.Error(err, "failed to generate NetworkPolicies")
 		return ctrl.Result{}, err
 	}
 
 	// Dry-run mode: store generated policies in status without applying
 	if generator.Spec.DryRun {
+		r.Recorder.Eventf(generator, "Normal", "DryRun",
+			"Dry-run mode: generated %d policies without applying", len(policies))
 		return r.handleDryRun(ctx, generator, policies)
 	}
 
@@ -101,11 +106,15 @@ func (r *NetworkPolicyGeneratorReconciler) handleKubernetesEnforcing(ctx context
 	for _, p := range policies {
 		action, applyErr := r.applyNetworkPolicyWithDiff(ctx, generator, p)
 		if applyErr != nil {
+			r.Recorder.Eventf(generator, "Warning", "ApplyFailed",
+				"Failed to apply NetworkPolicy %s/%s: %v", p.Namespace, p.Name, applyErr)
 			log.Error(applyErr, "failed to apply NetworkPolicy",
 				"namespace", p.Namespace,
 				"name", p.Name)
 			return ctrl.Result{}, applyErr
 		}
+		r.Recorder.Eventf(generator, "Normal", "Policy"+action,
+			"NetworkPolicy %s/%s %s", p.Namespace, p.Name, action)
 		diffEntries = append(diffEntries, securityv1.PolicyDiffEntry{
 			PolicyName: p.Name,
 			Namespace:  p.Namespace,
@@ -117,6 +126,12 @@ func (r *NetworkPolicyGeneratorReconciler) handleKubernetesEnforcing(ctx context
 	generator.Status.PolicyDiff = diffEntries
 	generator.Status.AppliedPoliciesCount = len(policies)
 
+	engineType := generator.Spec.PolicyEngine
+	if engineType == "" {
+		engineType = policy.EngineKubernetes
+	}
+	PoliciesApplied.WithLabelValues(generator.Name, generator.Namespace, engineType).Set(float64(len(policies)))
+
 	return r.updateStatusAndRequeue(ctx, generator)
 }
 
@@ -127,6 +142,7 @@ func (r *NetworkPolicyGeneratorReconciler) handleCiliumEnforcing(ctx context.Con
 	engine := policy.NewCiliumEngine()
 	objects, err := engine.GeneratePolicies(generator)
 	if err != nil {
+		r.Recorder.Eventf(generator, "Warning", "GenerationFailed", "Failed to generate CiliumNetworkPolicies: %v", err)
 		log.Error(err, "failed to generate CiliumNetworkPolicies")
 		return ctrl.Result{}, err
 	}
@@ -138,12 +154,16 @@ func (r *NetworkPolicyGeneratorReconciler) handleCiliumEnforcing(ctx context.Con
 
 	for _, obj := range objects {
 		if err := r.applyCiliumPolicy(ctx, generator, obj); err != nil {
+			r.Recorder.Eventf(generator, "Warning", "ApplyFailed", "Failed to apply CiliumNetworkPolicy: %v", err)
 			log.Error(err, "failed to apply CiliumNetworkPolicy")
 			return ctrl.Result{}, err
 		}
 	}
+	r.Recorder.Eventf(generator, "Normal", "PoliciesApplied",
+		"Applied %d CiliumNetworkPolicy resources", len(objects))
 
 	generator.Status.AppliedPoliciesCount = len(objects)
+	PoliciesApplied.WithLabelValues(generator.Name, generator.Namespace, policy.EngineCilium).Set(float64(len(objects)))
 
 	return r.updateStatusAndRequeue(ctx, generator)
 }
@@ -223,6 +243,7 @@ func ciliumGVK() schema.GroupVersionKind {
 func (r *NetworkPolicyGeneratorReconciler) handleDryRun(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, policies []*networkingv1.NetworkPolicy) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	log.Info("Dry-run mode: generating policies without applying", "count", len(policies))
+	DryRunTotal.Inc()
 
 	var policyYAMLs []string
 	for _, p := range policies {
@@ -244,6 +265,7 @@ func (r *NetworkPolicyGeneratorReconciler) handleDryRun(ctx context.Context, gen
 func (r *NetworkPolicyGeneratorReconciler) handleDryRunObjects(ctx context.Context, generator *securityv1.NetworkPolicyGenerator, objects []runtime.Object) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	log.Info("Dry-run mode: generating Cilium policies without applying", "count", len(objects))
+	DryRunTotal.Inc()
 
 	var policyYAMLs []string
 	for _, obj := range objects {
@@ -274,6 +296,7 @@ func (r *NetworkPolicyGeneratorReconciler) applyNetworkPolicyWithDiff(ctx contex
 		if err := r.Create(ctx, np); err != nil {
 			return "", err
 		}
+		PolicyOperations.WithLabelValues(policy.DiffActionCreated).Inc()
 		return policy.DiffActionCreated, nil
 	}
 
@@ -281,5 +304,6 @@ func (r *NetworkPolicyGeneratorReconciler) applyNetworkPolicyWithDiff(ctx contex
 	if err := r.Update(ctx, np); err != nil {
 		return "", err
 	}
+	PolicyOperations.WithLabelValues(policy.DiffActionUpdated).Inc()
 	return policy.DiffActionUpdated, nil
 }
