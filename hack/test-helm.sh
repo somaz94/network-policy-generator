@@ -8,7 +8,7 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-ENGINE="${1:-all}"
+ENGINE="${1:-auto}"
 PASS=0
 FAIL=0
 SKIP=0
@@ -85,6 +85,25 @@ check_calico() {
     return 0
   fi
   return 1
+}
+
+# Auto-detect CNI when ENGINE is "auto" (default)
+if [[ "$ENGINE" == "auto" ]]; then
+  ENGINE="kubernetes"  # always test kubernetes
+  if check_cilium; then
+    ENGINE="${ENGINE}+cilium"
+    log_info "Detected Cilium CNI"
+  fi
+  if check_calico; then
+    ENGINE="${ENGINE}+calico"
+    log_info "Detected Calico CNI"
+  fi
+  log_info "Auto-detected engines: ${ENGINE}"
+fi
+
+should_test() {
+  local engine=$1
+  [[ "$ENGINE" == "all" ]] || [[ "$ENGINE" == *"$engine"* ]]
 }
 
 # curl_test <from_pod> <from_ns> <target_svc> <target_ns> <expect: pass|fail> <test_label>
@@ -236,7 +255,7 @@ wait_for_pods test-ns3 90
 # ============================================================
 # Kubernetes Engine Tests
 # ============================================================
-if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
+if should_test "kubernetes"; then
   echo ""
   log_info "--- Kubernetes NetworkPolicy Tests (Helm) ---"
 
@@ -510,7 +529,7 @@ fi
 # ============================================================
 # Cilium Engine Tests
 # ============================================================
-if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
+if should_test "cilium"; then
   echo ""
   if check_cilium; then
     log_info "--- Cilium NetworkPolicy Tests (Helm) ---"
@@ -573,7 +592,7 @@ fi
 # ============================================================
 # Calico Engine Tests
 # ============================================================
-if [[ "$ENGINE" == "all" || "$ENGINE" == "calico" ]]; then
+if should_test "calico"; then
   echo ""
   if check_calico; then
     log_info "--- Calico NetworkPolicy Tests (Helm) ---"
@@ -621,7 +640,7 @@ fi
 # ============================================================
 # Policy Template Tests (Kubernetes Engine)
 # ============================================================
-if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
+if should_test "kubernetes"; then
   echo ""
   log_info "--- Policy Template Tests (Helm) ---"
 

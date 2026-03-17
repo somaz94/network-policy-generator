@@ -86,18 +86,24 @@ type mockClient struct {
 	noopGet           bool
 	noopCreate        bool
 	noopUpdate        bool
+	noopDelete        bool
+	noopStatusUpdate  bool
 }
 
 func (m *mockClient) Status() client.StatusWriter {
 	return &mockStatusWriter{
 		StatusWriter: m.Client.Status(),
 		err:          m.statusUpdateError,
+		noop:         m.noopStatusUpdate,
 	}
 }
 
 func (m *mockClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	if m.deleteError != nil {
 		return m.deleteError
+	}
+	if m.noopDelete {
+		return nil
 	}
 	return m.Client.Delete(ctx, obj, opts...)
 }
@@ -134,12 +140,16 @@ func (m *mockClient) Create(ctx context.Context, obj client.Object, opts ...clie
 
 type mockStatusWriter struct {
 	client.StatusWriter
-	err error
+	err  error
+	noop bool
 }
 
 func (m *mockStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
 	if m.err != nil {
 		return m.err
+	}
+	if m.noop {
+		return nil
 	}
 	return m.StatusWriter.Update(ctx, obj, opts...)
 }

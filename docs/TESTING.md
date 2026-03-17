@@ -48,10 +48,15 @@ Run all sample tests automatically:
 make test-integration
 ```
 
+By default, the script auto-detects installed CNI (Cilium/Calico CRDs) and runs matching tests.
+
 Options:
 
 ```bash
-# Kubernetes engine only (skip Cilium tests)
+# Auto-detect CNI and run matching tests (default)
+make test-integration
+
+# Kubernetes engine only
 make test-integration ENGINE=kubernetes
 
 # Cilium engine only
@@ -60,7 +65,7 @@ make test-integration ENGINE=cilium
 # Calico engine only
 make test-integration ENGINE=calico
 
-# All engines (default)
+# Force all engines (even if CRD not installed - will skip gracefully)
 make test-integration ENGINE=all
 ```
 
@@ -74,10 +79,15 @@ Run Helm chart tests (lint, template, install, upgrade, policy tests, uninstall)
 make test-helm
 ```
 
+By default, the script auto-detects installed CNI (Cilium/Calico CRDs) and runs matching tests.
+
 Options:
 
 ```bash
-# Kubernetes engine only (skip Cilium tests)
+# Auto-detect CNI and run matching tests (default)
+make test-helm
+
+# Kubernetes engine only
 make test-helm ENGINE=kubernetes
 
 # Cilium engine only
@@ -86,7 +96,7 @@ make test-helm ENGINE=cilium
 # Calico engine only
 make test-helm ENGINE=calico
 
-# All engines (default)
+# Force all engines
 make test-helm ENGINE=all
 ```
 

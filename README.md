@@ -493,17 +493,19 @@ kubectl get networkpolicygenerator <name> -o yaml
 # Unit tests
 make test
 
-# Integration tests (deploy to real cluster and test all sample policies)
-make test-integration                      # All engines
+# Integration tests (auto-detects CNI and runs matching tests)
+make test-integration                      # Auto-detect CNI
 make test-integration ENGINE=kubernetes    # Kubernetes only
 make test-integration ENGINE=cilium        # Cilium only
 make test-integration ENGINE=calico        # Calico only
+make test-integration ENGINE=all           # Force all engines
 
 # Helm chart tests (lint, install, upgrade, policy tests, uninstall)
-make test-helm                             # All engines
+make test-helm                             # Auto-detect CNI
 make test-helm ENGINE=kubernetes           # Kubernetes only
 make test-helm ENGINE=cilium               # Cilium only
 make test-helm ENGINE=calico               # Calico only
+make test-helm ENGINE=all                  # Force all engines
 ```
 
 For detailed manual test steps and sample descriptions, see [Test Guide](docs/TESTING.md).

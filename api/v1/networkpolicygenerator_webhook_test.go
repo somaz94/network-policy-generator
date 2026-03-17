@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -265,5 +266,113 @@ func TestValidateGenerator_ValidCiliumEngine(t *testing.T) {
 	_, err := validateGenerator(gen)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
+	}
+}
+
+func TestValidateGenerator_ValidCalicoEngine(t *testing.T) {
+	gen := &NetworkPolicyGenerator{
+		Spec: NetworkPolicyGeneratorSpec{
+			Mode:         "enforcing",
+			PolicyEngine: "calico",
+			Policy:       PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+		},
+	}
+	warnings, err := validateGenerator(gen)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings, got: %v", warnings)
+	}
+}
+
+func TestValidatorCreate_Valid(t *testing.T) {
+	v := &networkPolicyGeneratorValidator{}
+	gen := &NetworkPolicyGenerator{
+		Spec: NetworkPolicyGeneratorSpec{
+			Mode:   "enforcing",
+			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+		},
+	}
+	warnings, err := v.ValidateCreate(context.Background(), gen)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings, got: %v", warnings)
+	}
+}
+
+func TestValidatorCreate_Invalid(t *testing.T) {
+	v := &networkPolicyGeneratorValidator{}
+	gen := &NetworkPolicyGenerator{
+		Spec: NetworkPolicyGeneratorSpec{
+			Mode:   "bad",
+			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+		},
+	}
+	_, err := v.ValidateCreate(context.Background(), gen)
+	if err == nil {
+		t.Fatal("expected error for invalid mode")
+	}
+}
+
+func TestValidatorUpdate_Valid(t *testing.T) {
+	v := &networkPolicyGeneratorValidator{}
+	oldGen := &NetworkPolicyGenerator{
+		Spec: NetworkPolicyGeneratorSpec{
+			Mode:   "enforcing",
+			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+		},
+	}
+	newGen := &NetworkPolicyGenerator{
+		Spec: NetworkPolicyGeneratorSpec{
+			Mode:   "enforcing",
+			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1", "ns2"}},
+		},
+	}
+	warnings, err := v.ValidateUpdate(context.Background(), oldGen, newGen)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings, got: %v", warnings)
+	}
+}
+
+func TestValidatorUpdate_Invalid(t *testing.T) {
+	v := &networkPolicyGeneratorValidator{}
+	oldGen := &NetworkPolicyGenerator{
+		Spec: NetworkPolicyGeneratorSpec{
+			Mode:   "enforcing",
+			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+		},
+	}
+	newGen := &NetworkPolicyGenerator{
+		Spec: NetworkPolicyGeneratorSpec{
+			Mode:   "invalid",
+			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+		},
+	}
+	_, err := v.ValidateUpdate(context.Background(), oldGen, newGen)
+	if err == nil {
+		t.Fatal("expected error for invalid mode on update")
+	}
+}
+
+func TestValidatorDelete(t *testing.T) {
+	v := &networkPolicyGeneratorValidator{}
+	gen := &NetworkPolicyGenerator{
+		Spec: NetworkPolicyGeneratorSpec{
+			Mode:   "enforcing",
+			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+		},
+	}
+	warnings, err := v.ValidateDelete(context.Background(), gen)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if warnings != nil {
+		t.Fatalf("expected nil warnings, got: %v", warnings)
 	}
 }

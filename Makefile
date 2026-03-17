@@ -85,13 +85,13 @@ test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated 
 	}
 	go test ./test/e2e/ -v -ginkgo.v
 
-ENGINE ?= all
+ENGINE ?= auto
 .PHONY: test-integration
-test-integration: ## Run integration tests against a real cluster. Use ENGINE=kubernetes|cilium|all (default: all)
+test-integration: ## Run integration tests. ENGINE=auto|kubernetes|cilium|calico|all (default: auto-detect CNI)
 	@./hack/test-integration.sh $(ENGINE)
 
 .PHONY: test-helm
-test-helm: ## Run Helm chart tests (lint, template, install, upgrade, policy tests). Use ENGINE=kubernetes|cilium|all (default: all)
+test-helm: ## Run Helm chart tests. ENGINE=auto|kubernetes|cilium|calico|all (default: auto-detect CNI)
 	@./hack/test-helm.sh $(ENGINE)
 
 .PHONY: lint

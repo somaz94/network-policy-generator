@@ -87,7 +87,7 @@ Then create a Pull Request on GitHub.
 ```
 api/v1/                  # CRD type definitions
 internal/controller/     # Controller reconciliation logic
-internal/policy/         # Policy generation (kubernetes, cilium)
+internal/policy/         # Policy generation (kubernetes, cilium, calico)
 config/                  # Kustomize configs, CRDs, RBAC, samples
 helm/                    # Helm chart
 hack/                    # Test scripts

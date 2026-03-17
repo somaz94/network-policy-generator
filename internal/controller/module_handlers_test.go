@@ -1224,6 +1224,497 @@ var _ = Describe("Mode Handlers", func() {
 		})
 	})
 
+	Context("deleteNetworkPolicies with Cilium engine", func() {
+		It("should delete cilium policies via deleteUnstructuredPolicy", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-del-cilium",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "cilium",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// Mock: Delete returns NotFound (ignored by deleteUnstructuredPolicy)
+			mockCl := &mockClient{
+				Client:     k8sClient,
+				noopDelete: true,
+			}
+			ciliumReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			err := ciliumReconciler.deleteNetworkPolicies(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error when cilium delete fails with non-NotFound error", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-del-cilium-err",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "cilium",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{
+				Client:      k8sClient,
+				deleteError: fmt.Errorf("cilium delete failed"),
+			}
+			ciliumReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			err := ciliumReconciler.deleteNetworkPolicies(ctx, generator)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("cilium delete failed"))
+		})
+	})
+
+	Context("deleteNetworkPolicies with Calico engine", func() {
+		It("should delete calico policies via deleteUnstructuredPolicy", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-del-calico",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{
+				Client:     k8sClient,
+				noopDelete: true,
+			}
+			calicoReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			err := calicoReconciler.deleteNetworkPolicies(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return error when calico delete fails with non-NotFound error", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-del-calico-err",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{
+				Client:      k8sClient,
+				deleteError: fmt.Errorf("calico delete failed"),
+			}
+			calicoReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			err := calicoReconciler.deleteNetworkPolicies(ctx, generator)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("calico delete failed"))
+		})
+	})
+
+	Context("Reconcile with invalid mode via mock", func() {
+		It("should return error for empty/invalid mode hitting default case", func() {
+			// Create a valid generator in the API server
+			generator := createBasicGenerator(namespace, generatorName+"-invalid-mode")
+			generator.Spec.Mode = "enforcing"
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// Use mock with noopGet: returns empty generator (Mode=""), hitting default switch case
+			// noopStatusUpdate: so syncPhase doesn't fail
+			// noopUpdate: so AddFinalizer doesn't fail
+			mockCl := &mockClient{
+				Client:           k8sClient,
+				noopGet:          true,
+				noopStatusUpdate: true,
+				noopUpdate:       true,
+			}
+			mockReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			_, err := mockReconciler.Reconcile(ctx, ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      generatorName + "-invalid-mode",
+					Namespace: namespace,
+				},
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid mode"))
+		})
+	})
+
+	Context("Reconcile Get non-NotFound error", func() {
+		It("should return error when Get fails with non-NotFound error", func() {
+			mockCl := &mockClient{
+				Client:   k8sClient,
+				getError: fmt.Errorf("api server unavailable"),
+			}
+			mockReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			_, err := mockReconciler.Reconcile(ctx, ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "any-name",
+					Namespace: namespace,
+				},
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("api server unavailable"))
+		})
+	})
+
+	Context("Calico deletion on finalizer cleanup", func() {
+		It("should clean up calico policies and remove finalizer on deletion", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-del-fin",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// First reconcile adds finalizer (use noop for calico apply parts)
+			mockCl := &mockClient{
+				Client:     k8sClient,
+				noopDelete: true,
+			}
+			calicoReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			// Use real reconciler for first reconcile (adds finalizer, but calico apply will fail)
+			// Instead, manually add finalizer
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-calico-del-fin", Namespace: namespace,
+			}, generator)).To(Succeed())
+			generator.Finalizers = []string{finalizerName}
+			Expect(k8sClient.Update(ctx, generator)).To(Succeed())
+
+			// Delete the generator
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-calico-del-fin", Namespace: namespace,
+			}, generator)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, generator)).To(Succeed())
+
+			// Reconcile with mock that allows calico delete (noopDelete)
+			_, err := calicoReconciler.Reconcile(ctx, ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      generatorName + "-calico-del-fin",
+					Namespace: namespace,
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("Calico apply error in loop", func() {
+		It("should return error when applyCalicoPolicy fails in loop", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-loop-err",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type:              "deny",
+						AllowedNamespaces: []string{"ns1"},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// Mock: Get returns NotFound, Create fails
+			mockCl := &mockClient{
+				Client:      k8sClient,
+				getError:    apierrors.NewNotFound(schema.GroupResource{Group: "crd.projectcalico.org", Resource: "networkpolicies"}, ""),
+				createError: fmt.Errorf("calico create failed"),
+			}
+			calicoReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			_, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("calico create failed"))
+		})
+
+		It("should return error when Get returns non-NotFound error in applyCalicoPolicy", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-get-err",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type:              "deny",
+						AllowedNamespaces: []string{"ns1"},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{
+				Client:   k8sClient,
+				getError: fmt.Errorf("calico connection timeout"),
+			}
+			calicoReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			_, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("calico connection timeout"))
+		})
+
+		It("should return error when status update fails after calico apply", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-status-err",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type:              "deny",
+						AllowedNamespaces: []string{"ns1"},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{
+				Client:            k8sClient,
+				getError:          apierrors.NewNotFound(schema.GroupResource{Group: "crd.projectcalico.org", Resource: "networkpolicies"}, ""),
+				noopCreate:        true,
+				statusUpdateError: fmt.Errorf("calico status update failed"),
+			}
+			calicoReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			_, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("calico status update failed"))
+		})
+
+		It("should update existing calico policy via noop mock", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-upd",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type:              "deny",
+						AllowedNamespaces: []string{"ns1"},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			// Mock: Get returns nil (existing found via noop), Update succeeds (noop)
+			mockCl := &mockClient{
+				Client:     k8sClient,
+				noopGet:    true,
+				noopUpdate: true,
+			}
+			calicoReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			result, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
+		})
+	})
+
+	Context("Cilium deletion on finalizer cleanup", func() {
+		It("should clean up cilium policies and remove finalizer on deletion", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-cilium-del-fin",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "cilium",
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{
+				Client:     k8sClient,
+				noopDelete: true,
+			}
+			ciliumReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			// Manually add finalizer
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-cilium-del-fin", Namespace: namespace,
+			}, generator)).To(Succeed())
+			generator.Finalizers = []string{finalizerName}
+			Expect(k8sClient.Update(ctx, generator)).To(Succeed())
+
+			// Delete the generator
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-cilium-del-fin", Namespace: namespace,
+			}, generator)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, generator)).To(Succeed())
+
+			// Reconcile with mock that allows cilium delete
+			_, err := ciliumReconciler.Reconcile(ctx, ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      generatorName + "-cilium-del-fin",
+					Namespace: namespace,
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	Context("Calico Dry Run Status Error", func() {
+		It("should return error when status update fails in calico dry-run", func() {
+			generator := &securityv1.NetworkPolicyGenerator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      generatorName + "-calico-dryrun-err",
+					Namespace: namespace,
+				},
+				Spec: securityv1.NetworkPolicyGeneratorSpec{
+					Mode:         "enforcing",
+					PolicyEngine: "calico",
+					DryRun:       true,
+					Duration:     metav1.Duration{Duration: time.Minute},
+					Policy: securityv1.PolicyConfig{
+						Type: "deny",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
+
+			mockCl := &mockClient{Client: k8sClient, statusUpdateError: fmt.Errorf("calico dryrun status failed")}
+			errReconciler := &NetworkPolicyGeneratorReconciler{
+				Client:    mockCl,
+				Scheme:    k8sClient.Scheme(),
+				Generator: policy.NewGenerator(),
+				Validator: policy.NewValidator(),
+				Recorder:  record.NewFakeRecorder(100),
+			}
+
+			_, err := errReconciler.handleCalicoEnforcing(ctx, generator)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("calico dryrun status failed"))
+		})
+	})
+
 	Context("Cilium Enforcing Success Path", func() {
 		It("should successfully apply cilium policy with mock client", func() {
 			generator := &securityv1.NetworkPolicyGenerator{

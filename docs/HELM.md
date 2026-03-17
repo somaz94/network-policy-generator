@@ -7,6 +7,7 @@
 - Kubernetes 1.16+
 - Helm 3.0+
 - For Cilium policies: Cilium CNI installed on the cluster
+- For Calico policies: Calico CNI installed on the cluster
 
 <br/>
 
@@ -68,7 +69,7 @@ metadata:
   namespace: default
 spec:
   mode: "enforcing"
-  policyEngine: "kubernetes"  # or "cilium"
+  policyEngine: "kubernetes"  # or "cilium" or "calico"
   policy:
     type: "deny"
     allowedNamespaces:
