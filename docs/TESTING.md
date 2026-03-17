@@ -48,6 +48,8 @@ Run all sample tests automatically:
 make test-integration
 ```
 
+> **Note**: This test uses `make deploy` to deploy the controller from local source. No published image or tag is required — you can run it before tagging a release.
+
 By default, the script auto-detects installed CNI (Cilium/Calico CRDs) and runs matching tests.
 
 Options:
@@ -78,6 +80,8 @@ Run Helm chart tests (lint, template, install, upgrade, policy tests, uninstall)
 ```bash
 make test-helm
 ```
+
+> **Note**: This test installs the Helm chart from the local source path (`./helm/network-policy-generator`), not from a published chart repository. No tagging or packaging is required — you can run it before tagging a release.
 
 By default, the script auto-detects installed CNI (Cilium/Calico CRDs) and runs matching tests.
 
