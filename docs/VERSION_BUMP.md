@@ -24,11 +24,11 @@ The `bump-version` script updates the following files:
 
 | File | Field | Example |
 |------|-------|---------|
-| `Makefile` | `IMG ?= somaz940/network-policy-generator:<version>` | `v0.2.0` |
-| `helm/network-policy-generator/Chart.yaml` | `version` (chart version, without `v` prefix) | `0.2.0` |
-| `helm/network-policy-generator/Chart.yaml` | `appVersion` (app version, with `v` prefix) | `"v0.2.0"` |
-| `helm/network-policy-generator/values.yaml` | `image.tag` | `v0.2.0` |
-| `config/manager/kustomization.yaml` | `newTag` | `v0.2.0` |
+| `Makefile` | `IMG ?= somaz940/network-policy-generator:<version>` | `v0.2.1` |
+| `helm/network-policy-generator/Chart.yaml` | `version` (chart version, without `v` prefix) | `0.2.1` |
+| `helm/network-policy-generator/Chart.yaml` | `appVersion` (app version, with `v` prefix) | `"v0.2.1"` |
+| `helm/network-policy-generator/values.yaml` | `image.tag` | `v0.2.1` |
+| `config/manager/kustomization.yaml` | `newTag` | `v0.2.1` |
 
 ### Documentation Files
 

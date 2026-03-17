@@ -2,7 +2,7 @@ namespace: network-policy-generator-system
 
 image:
   repository: somaz940/network-policy-generator
-  tag: v0.2.0
+  tag: v0.2.1
   pullPolicy: IfNotPresent
 
 serviceAccount:
