@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- sync helm CRD with latest types and fix helm status check ([9a71448](https://github.com/somaz94/network-policy-generator/commit/9a71448edc36becd2ca8ad2fcbbfef7db33f1888))
+- move podSelector to spec level in sample and add learning test to helm ([18a9411](https://github.com/somaz94/network-policy-generator/commit/18a94118b20920333b5e24054dea90e03e73c3d5))
 - re-declare ARG in final stage for OCI labels ([acd2114](https://github.com/somaz94/network-policy-generator/commit/acd21145f5dcd08104874d28326e87b9fd267431))
 - improve integration test reliability with wait_for_phase and metrics RBAC ([7f6274a](https://github.com/somaz94/network-policy-generator/commit/7f6274ab20d2e6b3eb0ae2a3c27ca9a8fa408077))
 - wait for rollout after imagePullPolicy patch and improve metrics test ([bf62036](https://github.com/somaz94/network-policy-generator/commit/bf6203656cacb658c299f7ecd6972bd317068a1c))
@@ -33,6 +35,7 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
+- update changelog ([0178521](https://github.com/somaz94/network-policy-generator/commit/01785213b1a6c150115f7874bc80d1c448e867ac))
 - update TESTING.md metrics section to use port-forward ([54e292b](https://github.com/somaz94/network-policy-generator/commit/54e292bde74e938aafb4460e3c6167101740bd4c))
 - add event recording, metrics, webhook to README and docs ([c71b248](https://github.com/somaz94/network-policy-generator/commit/c71b24804e5a74a90a86f68fb1bdff62bccfe0ca))
 - README.md ([8205253](https://github.com/somaz94/network-policy-generator/commit/8205253041b72866fc766ba67d39bf21a55078ad))
