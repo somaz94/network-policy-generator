@@ -58,6 +58,38 @@ spec:
           spec:
             description: NetworkPolicyGeneratorSpec defines the desired state of NetworkPolicyGenerator
             properties:
+              cidrRules:
+                description: CIDRRules defines CIDR-based traffic rules for external
+                  IP ranges
+                items:
+                  description: CIDRRule defines a CIDR-based traffic rule for external
+                    IP ranges
+                  properties:
+                    cidr:
+                      description: CIDR is the IP address range (e.g., "10.0.0.0/8",
+                        "192.168.1.0/24")
+                      type: string
+                    direction:
+                      description: Direction of the traffic (ingress/egress)
+                      enum:
+                      - ingress
+                      - egress
+                      type: string
+                    except:
+                      description: Except is a list of CIDRs to exclude from the rule
+                      items:
+                        type: string
+                      type: array
+                  required:
+                  - cidr
+                  - direction
+                  type: object
+                type: array
+              dryRun:
+                description: |-
+                  DryRun when true, generates policies without applying them
+                  Generated policies are stored in status.generatedPolicies
+                type: boolean
               duration:
                 description: Duration specifies how long to analyze traffic in learning
                   mode
@@ -73,8 +105,13 @@ spec:
                       - ingress
                       - egress
                       type: string
+                    namedPort:
+                      description: NamedPort is the port name (e.g., "http", "grpc")
+                        as an alternative to numeric port
+                      type: string
                     port:
-                      description: Port number
+                      description: Port number (1-65535). Either port or namedPort
+                        must be specified.
                       format: int32
                       maximum: 65535
                       minimum: 1
@@ -93,7 +130,6 @@ spec:
                       type: string
                   required:
                   - direction
-                  - port
                   - protocol
                   - type
                   type: object
@@ -119,6 +155,13 @@ spec:
                     items:
                       type: string
                     type: array
+                  podSelector:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      PodSelector restricts policy to pods matching these labels
+                      If empty, applies to all pods in the namespace
+                    type: object
                   type:
                     description: Type defines the policy type (allow/deny)
                     enum:
@@ -145,6 +188,16 @@ spec:
             description: NetworkPolicyGeneratorStatus defines the observed state of
               NetworkPolicyGenerator
             properties:
+              appliedPoliciesCount:
+                description: AppliedPoliciesCount is the number of currently applied
+                  policies
+                type: integer
+              generatedPolicies:
+                description: GeneratedPolicies contains the YAML representation of
+                  generated policies (populated in dry-run mode)
+                items:
+                  type: string
+                type: array
               lastAnalyzed:
                 description: LastAnalyzed is the timestamp of when traffic was last
                   analyzed
@@ -178,6 +231,34 @@ spec:
                 description: 'Phase represents the current phase of the generator:
                   Learning, Analyzing, or Enforcing'
                 type: string
+              policyDiff:
+                description: PolicyDiff contains the diff between the current and
+                  previously applied policies
+                items:
+                  description: PolicyDiffEntry represents a single diff entry for
+                    policy audit
+                  properties:
+                    action:
+                      description: 'Action is the type of change: Created, Updated,
+                        Unchanged'
+                      type: string
+                    namespace:
+                      description: Namespace is the namespace of the policy
+                      type: string
+                    policyName:
+                      description: PolicyName is the name of the policy
+                      type: string
+                    timestamp:
+                      description: Timestamp is when the change was detected
+                      format: date-time
+                      type: string
+                  required:
+                  - action
+                  - namespace
+                  - policyName
+                  - timestamp
+                  type: object
+                type: array
             type: object
         type: object
     served: true
@@ -470,7 +551,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: somaz940/network-policy-generator:v0.1.2
+        image: somaz940/network-policy-generator:v0.2.0
         livenessProbe:
           httpGet:
             path: /healthz

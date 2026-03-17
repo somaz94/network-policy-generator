@@ -1,5 +1,5 @@
 # Image URL to use all building/pushing image targets
-IMG ?= somaz940/network-policy-generator:v0.1.2
+IMG ?= somaz940/network-policy-generator:v0.2.0
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.31.0
 
@@ -167,6 +167,18 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	mkdir -p dist
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default > dist/install.yaml
+
+##@ Version
+
+.PHONY: version
+version: ## Show current version across all files.
+	@./hack/bump-version.sh --current
+
+VERSION ?=
+.PHONY: bump-version
+bump-version: ## Bump version across all files. Usage: make bump-version VERSION=v0.3.0
+	@if [ -z "$(VERSION)" ]; then echo "Usage: make bump-version VERSION=vX.Y.Z"; exit 1; fi
+	@./hack/bump-version.sh $(VERSION)
 
 ##@ Deployment
 
