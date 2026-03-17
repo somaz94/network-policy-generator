@@ -3,6 +3,10 @@
 ![Top Language](https://img.shields.io/github/languages/top/somaz94/network-policy-generator?color=green&logo=go&logoColor=b)
 ![Version](https://img.shields.io/github/v/tag/somaz94/network-policy-generator?label=version&logo=kubernetes&logoColor=white)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Go Report Card](https://goreportcard.com/badge/github.com/somaz94/network-policy-generator)](https://goreportcard.com/report/github.com/somaz94/network-policy-generator)
+![Docker Pulls](https://img.shields.io/docker/pulls/somaz940/network-policy-generator?logo=docker&logoColor=white)
+![GitHub Release](https://img.shields.io/github/release/somaz94/network-policy-generator?logo=github)
+![GitHub Stars](https://img.shields.io/github/stars/somaz94/network-policy-generator?style=social)
 
 A Kubernetes controller that automatically generates and manages Kubernetes Network Policies based on observed traffic patterns and user-defined rules.
 
@@ -23,6 +27,15 @@ This tool helps security teams and cluster administrators implement network segm
 - Supporting multiple CNI backends via `policyEngine` field (`kubernetes`, `cilium`)
 
 ### Key Features
+
+![Pod Selector](https://img.shields.io/badge/Pod_Label_Selector-blue?logo=kubernetes&logoColor=white)
+![CIDR Rules](https://img.shields.io/badge/CIDR_Rules-blue?logo=kubernetes&logoColor=white)
+![Named Port](https://img.shields.io/badge/Named_Port-blue?logo=kubernetes&logoColor=white)
+![Dry Run](https://img.shields.io/badge/Dry_Run-green?logo=kubernetes&logoColor=white)
+![Policy Diff](https://img.shields.io/badge/Policy_Diff/Audit-green?logo=kubernetes&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes_NetworkPolicy-326CE5?logo=kubernetes&logoColor=white)
+![Cilium](https://img.shields.io/badge/Cilium_NetworkPolicy-F8C517?logo=cilium&logoColor=black)
+![Learning Mode](https://img.shields.io/badge/Learning_Mode-orange?logo=kubernetes&logoColor=white)
 
 - **Pod Label Selector** — Target specific pods by label instead of entire namespaces
 - **CIDR-based Rules** — Define ingress/egress rules for external IP ranges (e.g., databases, external APIs)
