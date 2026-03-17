@@ -42,6 +42,19 @@ wait_for_resource() {
   return 1
 }
 
+wait_for_phase() {
+  local ns=$1
+  local phase=$2
+  local timeout=${3:-15}
+  for i in $(seq 1 "$timeout"); do
+    if kubectl get networkpolicygenerators -n "$ns" 2>/dev/null | grep -q "$phase"; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 cleanup_cr() {
   kubectl delete networkpolicygenerators -n test-ns1 --all --ignore-not-found 2>/dev/null || true
   kubectl delete networkpolicygenerators -n test-ns2 --all --ignore-not-found 2>/dev/null || true
@@ -223,8 +236,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   # Test: Deny Policy
   log_info "[Test] Kubernetes Deny Policy"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-deny.yaml" -n test-ns1
-  sleep 3
-  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns1 "Enforcing"; then
     log_pass "K8s Deny: CR created with Enforcing phase"
   else
     log_fail "K8s Deny: CR not in Enforcing phase"
@@ -247,8 +259,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   # Test: Allow Policy
   log_info "[Test] Kubernetes Allow Policy"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-allow.yaml" -n test-ns1
-  sleep 3
-  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns1 "Enforcing"; then
     log_pass "K8s Allow: CR created with Enforcing phase"
   else
     log_fail "K8s Allow: CR not in Enforcing phase"
@@ -265,8 +276,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   # Test: Pod Selector Policy
   log_info "[Test] Kubernetes Pod Selector Policy"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-pod-selector.yaml" -n test-ns1
-  sleep 3
-  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns1 "Enforcing"; then
     log_pass "K8s PodSelector: CR created with Enforcing phase"
   else
     log_fail "K8s PodSelector: CR not in Enforcing phase"
@@ -289,8 +299,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   # Test: CIDR Rules Policy
   log_info "[Test] Kubernetes CIDR Rules Policy"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-cidr-rules.yaml" -n test-ns1
-  sleep 3
-  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns1 "Enforcing"; then
     log_pass "K8s CIDR: CR created with Enforcing phase"
   else
     log_fail "K8s CIDR: CR not in Enforcing phase"
@@ -318,8 +327,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   # Test: Named Port Policy
   log_info "[Test] Kubernetes Named Port Policy"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-named-port.yaml" -n test-ns1
-  sleep 3
-  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns1 "Enforcing"; then
     log_pass "K8s NamedPort: CR created with Enforcing phase"
   else
     log_fail "K8s NamedPort: CR not in Enforcing phase"
@@ -346,8 +354,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   # Test: Dry Run Policy
   log_info "[Test] Kubernetes Dry Run Mode"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-dry-run.yaml" -n test-ns1
-  sleep 5
-  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns1 "Enforcing"; then
     log_pass "K8s DryRun: CR created with Enforcing phase"
   else
     log_fail "K8s DryRun: CR not in Enforcing phase"
@@ -371,8 +378,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   # Test: Full Features (combined)
   log_info "[Test] Kubernetes Full Features (pod-selector + CIDR + named-port)"
   kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-full-features.yaml" -n test-ns1
-  sleep 3
-  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns1 "Enforcing"; then
     log_pass "K8s Full: CR created with Enforcing phase"
   else
     log_fail "K8s Full: CR not in Enforcing phase"
@@ -428,6 +434,12 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   log_info "[Test] Prometheus Metrics Verification"
   METRICS_SVC="network-policy-generator-controller-manager-metrics-service"
   if kubectl get svc "$METRICS_SVC" -n "$NAMESPACE" >/dev/null 2>&1; then
+    # Create temporary ClusterRoleBinding so the SA token can access /metrics
+    SA_NAME="network-policy-generator-controller-manager"
+    kubectl create clusterrolebinding npg-metrics-test-binding \
+      --clusterrole=network-policy-generator-metrics-reader \
+      --serviceaccount="${NAMESPACE}:${SA_NAME}" 2>/dev/null || true
+
     # Port-forward to controller pod directly (distroless image has no curl)
     METRICS_POD=$(kubectl get pod -l control-plane=controller-manager -n "$NAMESPACE" \
       -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
@@ -435,8 +447,8 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
     PF_PID=$!
     sleep 3
 
-    # Try with SA token first, fallback to no-auth
-    TOKEN=$(kubectl create token network-policy-generator-controller-manager -n "$NAMESPACE" 2>/dev/null || true)
+    # Use SA token for authentication
+    TOKEN=$(kubectl create token "${SA_NAME}" -n "$NAMESPACE" 2>/dev/null || true)
     if [[ -n "$TOKEN" ]]; then
       METRICS=$(curl -sk -H "Authorization: Bearer ${TOKEN}" https://localhost:18443/metrics 2>/dev/null || true)
     else
@@ -444,6 +456,9 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
     fi
     kill $PF_PID 2>/dev/null || true
     wait $PF_PID 2>/dev/null || true
+
+    # Cleanup temporary binding
+    kubectl delete clusterrolebinding npg-metrics-test-binding 2>/dev/null || true
 
     if [[ -z "$METRICS" ]]; then
       log_info "Metrics: No metrics response received (debug: token=${TOKEN:+set}, pod=${METRICS_POD})"
@@ -459,10 +474,10 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
     else
       log_fail "Metrics: npg_reconcile_duration_seconds metric not found"
     fi
-    if echo "$METRICS" | grep -q "npg_policies_applied"; then
-      log_pass "Metrics: npg_policies_applied metric found"
+    if echo "$METRICS" | grep -q "npg_policy_operations_total"; then
+      log_pass "Metrics: npg_policy_operations_total metric found"
     else
-      log_fail "Metrics: npg_policies_applied metric not found"
+      log_fail "Metrics: npg_policy_operations_total metric not found"
     fi
   else
     log_skip "Metrics: Metrics service not found, skipping metrics test"
@@ -471,13 +486,12 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   # Test: Multi-Namespace
   log_info "[Test] Multi-Namespace Policy"
   kubectl apply -f "${SAMPLES_DIR}/test-policy.yaml"
-  sleep 3
-  if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns1 "Enforcing"; then
     log_pass "Multi-NS: test-ns1 CR in Enforcing phase"
   else
     log_fail "Multi-NS: test-ns1 CR not in Enforcing phase"
   fi
-  if kubectl get networkpolicygenerators -n test-ns2 2>/dev/null | grep -q "Enforcing"; then
+  if wait_for_phase test-ns2 "Enforcing"; then
     log_pass "Multi-NS: test-ns2 CR in Enforcing phase"
   else
     log_fail "Multi-NS: test-ns2 CR not in Enforcing phase"
@@ -497,8 +511,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
     # Test: Cilium Deny Policy
     log_info "[Test] Cilium Deny Policy"
     kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-cilium-deny.yaml" -n test-ns1
-    sleep 3
-    if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    if wait_for_phase test-ns1 "Enforcing"; then
       log_pass "Cilium Deny: CR created with Enforcing phase"
     else
       log_fail "Cilium Deny: CR not in Enforcing phase"
@@ -526,8 +539,7 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "cilium" ]]; then
     # Test: Cilium Allow Policy
     log_info "[Test] Cilium Allow Policy"
     kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-cilium-allow.yaml" -n test-ns1
-    sleep 5
-    if kubectl get networkpolicygenerators -n test-ns1 2>/dev/null | grep -q "Enforcing"; then
+    if wait_for_phase test-ns1 "Enforcing"; then
       log_pass "Cilium Allow: CR created with Enforcing phase"
     else
       log_fail "Cilium Allow: CR not in Enforcing phase"
