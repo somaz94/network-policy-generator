@@ -145,8 +145,13 @@ func main() {
 	if err = controller.NewReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
+		mgr.GetEventRecorderFor("network-policy-generator"),
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkPolicyGenerator")
+		os.Exit(1)
+	}
+	if err = (&securityv1.NetworkPolicyGenerator{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "NetworkPolicyGenerator")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

@@ -1,0 +1,26 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-security-policy-io-v1-networkpolicygenerator
+  failurePolicy: Fail
+  name: vnetworkpolicygenerator.kb.io
+  rules:
+  - apiGroups:
+    - security.policy.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - networkpolicygenerators
+  sideEffects: None
