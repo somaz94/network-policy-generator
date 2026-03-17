@@ -115,9 +115,14 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
+DOCKER_BUILD_ARGS = \
+	--build-arg VERSION=$(shell echo ${IMG} | cut -d: -f2) \
+	--build-arg GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown) \
+	--build-arg BUILD_DATE=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+	$(CONTAINER_TOOL) build $(DOCKER_BUILD_ARGS) -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -139,6 +144,7 @@ docker-buildx-tag: ## Build and push docker image for the manager for cross-plat
 	$(CONTAINER_TOOL) buildx use network-policy-generator-builder
 	# Build and push version-specific tag
 	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) \
+		$(DOCKER_BUILD_ARGS) \
 		--tag ${IMG} \
 		-f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm network-policy-generator-builder
@@ -152,6 +158,7 @@ docker-buildx-latest: ## Build and push docker image for the manager for cross-p
 	$(CONTAINER_TOOL) buildx use network-policy-generator-builder
 	# Build and push latest tag
 	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) \
+		$(DOCKER_BUILD_ARGS) \
 		--tag $(shell echo ${IMG} | cut -f1 -d:):latest \
 		-f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm network-policy-generator-builder
