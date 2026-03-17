@@ -153,6 +153,7 @@ kubectl delete crd networkpolicygenerators.security.policy.io --ignore-not-found
 log_info "Installing chart via Helm..."
 helm upgrade --install "${RELEASE_NAME}" "${CHART_DIR}" \
   --create-namespace \
+  --set image.pullPolicy=Always \
   --wait \
   --timeout 120s 2>&1 | tail -5
 
@@ -409,6 +410,43 @@ if [[ "$ENGINE" == "all" || "$ENGINE" == "kubernetes" ]]; then
   fi
   cleanup_cr
   sleep 2
+
+  # Test: Event Recording
+  log_info "[Test] Event Recording Verification"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-deny.yaml" -n test-ns1
+  sleep 5
+  EVENTS=$(kubectl get events -n test-ns1 --field-selector involvedObject.kind=NetworkPolicyGenerator 2>/dev/null)
+  if echo "$EVENTS" | grep -qi "PolicyApplied\|Normal"; then
+    log_pass "Events: Events recorded for NetworkPolicyGenerator"
+  else
+    log_fail "Events: No events found for NetworkPolicyGenerator"
+  fi
+  cleanup_cr
+  sleep 2
+
+  # Test: Prometheus Metrics
+  log_info "[Test] Prometheus Metrics Verification"
+  METRICS_POD=$(kubectl get pod -l control-plane=controller-manager -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+  if [[ -n "$METRICS_POD" ]]; then
+    METRICS=$(kubectl exec "$METRICS_POD" -n "$NAMESPACE" -- curl -s http://localhost:8080/metrics 2>/dev/null || true)
+    if echo "$METRICS" | grep -q "npg_reconcile_total"; then
+      log_pass "Metrics: npg_reconcile_total metric found"
+    else
+      log_fail "Metrics: npg_reconcile_total metric not found"
+    fi
+    if echo "$METRICS" | grep -q "npg_reconcile_duration_seconds"; then
+      log_pass "Metrics: npg_reconcile_duration_seconds metric found"
+    else
+      log_fail "Metrics: npg_reconcile_duration_seconds metric not found"
+    fi
+    if echo "$METRICS" | grep -q "npg_policies_applied"; then
+      log_pass "Metrics: npg_policies_applied metric found"
+    else
+      log_fail "Metrics: npg_policies_applied metric not found"
+    fi
+  else
+    log_skip "Metrics: Controller pod not found, skipping metrics test"
+  fi
 
   # Test: Multi-Namespace
   log_info "[Test] Multi-Namespace Policy"

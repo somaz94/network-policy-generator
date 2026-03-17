@@ -390,6 +390,43 @@ EOF
   cleanup_cr
   sleep 2
 
+  # Test D-6: Event Recording
+  log_info "[Test D-6] Event Recording Verification"
+  kubectl apply -f "${SAMPLES_DIR}/security_v1_networkpolicygenerator-deny.yaml" -n test-ns1
+  sleep 5
+  EVENTS=$(kubectl get events -n test-ns1 --field-selector involvedObject.kind=NetworkPolicyGenerator 2>/dev/null)
+  if echo "$EVENTS" | grep -qi "PolicyApplied\|Normal"; then
+    log_pass "Test D-6: Events recorded for NetworkPolicyGenerator"
+  else
+    log_fail "Test D-6: No events found for NetworkPolicyGenerator"
+  fi
+  cleanup_cr
+  sleep 2
+
+  # Test D-7: Prometheus Metrics
+  log_info "[Test D-7] Prometheus Metrics Verification"
+  METRICS_POD=$(kubectl get pod -l control-plane=controller-manager -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+  if [[ -n "$METRICS_POD" ]]; then
+    METRICS=$(kubectl exec "$METRICS_POD" -n "$NAMESPACE" -- curl -s http://localhost:8080/metrics 2>/dev/null || true)
+    if echo "$METRICS" | grep -q "npg_reconcile_total"; then
+      log_pass "Test D-7: npg_reconcile_total metric found"
+    else
+      log_fail "Test D-7: npg_reconcile_total metric not found"
+    fi
+    if echo "$METRICS" | grep -q "npg_reconcile_duration_seconds"; then
+      log_pass "Test D-7: npg_reconcile_duration_seconds metric found"
+    else
+      log_fail "Test D-7: npg_reconcile_duration_seconds metric not found"
+    fi
+    if echo "$METRICS" | grep -q "npg_policies_applied"; then
+      log_pass "Test D-7: npg_policies_applied metric found"
+    else
+      log_fail "Test D-7: npg_policies_applied metric not found"
+    fi
+  else
+    log_skip "Test D-7: Controller pod not found, skipping metrics test"
+  fi
+
   # Test D: Multi-Namespace
   log_info "[Test D] Multi-Namespace Policy (test-policy.yaml)"
   kubectl apply -f "${SAMPLES_DIR}/test-policy.yaml"
