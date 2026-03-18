@@ -17,16 +17,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
-
-      - name: Push to GitLab Mirror
-        env:
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-        run: |
-          git remote add gitlab https://oauth2:${GITLAB_TOKEN}@gitlab.com/backup6695808/network-policy-generator.git
-          git push -f --all gitlab
-          git push -f --tags gitlab
-        continue-on-error: true
+      - name: Mirror to GitLab
+        uses: somaz94/multi-git-mirror@v1
+        with:
+          targets: |
+            gitlab::https://gitlab.com/backup6695808/network-policy-generator.git
+          gitlab_token: ${{ secrets.GITLAB_TOKEN }}
+          mirror_branches: 'all'
+          mirror_tags: 'true'
+          force_push: 'true'
