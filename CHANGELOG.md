@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased (2026-03-19)
+
+### Features
+
+- add CODEOWNERS ([5a9ecf7](https://github.com/somaz94/network-policy-generator/commit/5a9ecf7c9db5bffc281704fad0a8dfb10df08272))
+
+### Documentation
+
+- rollback README.md ([5c4c338](https://github.com/somaz94/network-policy-generator/commit/5c4c33832ccd0389b6c46bf23ddbcc935aaff294))
+- README.md ([e483921](https://github.com/somaz94/network-policy-generator/commit/e4839213b324a7282294e3646062f0a003e21bbe))
+- update changelog ([7ff5f5f](https://github.com/somaz94/network-policy-generator/commit/7ff5f5f5923565f652cab89d8cf4585e19778e2d))
+
+### Continuous Integration
+
+- migrate gitlab-mirror workflow to multi-git-mirror action ([91ffe6a](https://github.com/somaz94/network-policy-generator/commit/91ffe6aefb27dc387ee092fbf4a3399229ba7300))
+
+### Chores
+
+- **deps:** bump github.com/onsi/gomega in the go-minor group ([312648f](https://github.com/somaz94/network-policy-generator/commit/312648fb77839b96de594e5efed641d61e3ad195))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v0.2.1](https://github.com/somaz94/network-policy-generator/compare/v0.2.0...v0.2.1) (2026-03-17)
 
 ### Documentation
