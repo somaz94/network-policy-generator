@@ -187,6 +187,31 @@ bump-version: ## Bump version across all files. Usage: make bump-version VERSION
 	@if [ -z "$(VERSION)" ]; then echo "Usage: make bump-version VERSION=vX.Y.Z"; exit 1; fi
 	@./hack/bump-version.sh $(VERSION)
 
+##@ Workflow
+
+.PHONY: check-gh
+check-gh: ## Check if gh CLI is installed and authenticated
+	@command -v gh >/dev/null 2>&1 || { echo "\033[31m✗ gh CLI not installed. Run: brew install gh\033[0m"; exit 1; }
+	@gh auth status >/dev/null 2>&1 || { echo "\033[31m✗ gh CLI not authenticated. Run: gh auth login\033[0m"; exit 1; }
+	@echo "\033[32m✓ gh CLI ready\033[0m"
+
+.PHONY: branch
+branch: ## Create feature branch (usage: make branch name=watch-mode)
+	@if [ -z "$(name)" ]; then echo "Usage: make branch name=<feature-name>"; exit 1; fi
+	git checkout main
+	git pull origin main
+	git checkout -b feat/$(name)
+	@echo "\033[32m✓ Branch feat/$(name) created\033[0m"
+
+.PHONY: pr
+pr: check-gh ## Run tests, push, and create PR (usage: make pr title="Add feature")
+	@if [ -z "$(title)" ]; then echo "Usage: make pr title=\"PR title\""; exit 1; fi
+	go test ./... -race -cover
+	go vet ./...
+	git push -u origin $$(git branch --show-current)
+	gh pr create --title "$(title)" --body "## Summary"$$'\n\n'"Branch: $$(git branch --show-current)"$$'\n\n'"## Test plan"$$'\n\n'"- [ ] Unit tests pass"$$'\n'"- [ ] Coverage maintained"
+	@echo "\033[32m✓ PR created\033[0m"
+
 ##@ Deployment
 
 ifndef ignore-not-found
