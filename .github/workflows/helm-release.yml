@@ -55,6 +55,9 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
 
+          # Discard Chart.yaml modification from appVersion update step
+          git checkout -- helm/network-policy-generator/Chart.yaml 2>/dev/null || true
+
           # Move helm-repo to temp to avoid checkout conflicts
           cp -r helm-repo/ /tmp/helm-repo-staging/
           rm -rf helm-repo/
