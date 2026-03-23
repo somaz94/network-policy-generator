@@ -108,8 +108,8 @@ update_file "${ROOT_DIR}/helm/network-policy-generator/Chart.yaml" \
     "Chart.yaml (appVersion)"
 
 update_file "${ROOT_DIR}/helm/network-policy-generator/values.yaml" \
-    "tag: ${CURRENT_VERSION}" \
-    "tag: ${NEW_VERSION}" \
+    "tag: .*${CURRENT_VERSION}.*" \
+    "tag: \"${NEW_VERSION}\"" \
     "values.yaml (image.tag)"
 
 update_file "${ROOT_DIR}/config/manager/kustomization.yaml" \
