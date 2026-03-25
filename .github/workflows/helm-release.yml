@@ -21,7 +21,7 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
 
       - name: Update Chart appVersion
         run: |
