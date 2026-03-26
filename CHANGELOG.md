@@ -2,24 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-03-19)
+## Unreleased (2026-03-26)
 
 ### Features
 
 - add CODEOWNERS ([5a9ecf7](https://github.com/somaz94/network-policy-generator/commit/5a9ecf7c9db5bffc281704fad0a8dfb10df08272))
 
+### Bug Fixes
+
+- restore Chart.yaml before gh-pages checkout in helm-release workflow ([018dd91](https://github.com/somaz94/network-policy-generator/commit/018dd91ff8ec9a95e9562859b5515b607d47ede0))
+- prevent duplicate quote in bump-version.sh values.yaml sed pattern ([a49cd71](https://github.com/somaz94/network-policy-generator/commit/a49cd7160c9378cb1fa613d948ea62cf831e73a5))
+- use GITHUB_TOKEN for dependabot auto merge ([6fc4a06](https://github.com/somaz94/network-policy-generator/commit/6fc4a06579d39d10f8ea1fd0e7bb402120913079))
+
 ### Documentation
 
+- add DEVELOPMENT.md ([7502b9a](https://github.com/somaz94/network-policy-generator/commit/7502b9a19f7706bc942463720a278e19605140ee))
+- add no-push rule to CLAUDE.md ([f7a88dd](https://github.com/somaz94/network-policy-generator/commit/f7a88ddb754375757c2ae265edc0585107bcfff0))
 - rollback README.md ([5c4c338](https://github.com/somaz94/network-policy-generator/commit/5c4c33832ccd0389b6c46bf23ddbcc935aaff294))
 - README.md ([e483921](https://github.com/somaz94/network-policy-generator/commit/e4839213b324a7282294e3646062f0a003e21bbe))
-- update changelog ([7ff5f5f](https://github.com/somaz94/network-policy-generator/commit/7ff5f5f5923565f652cab89d8cf4585e19778e2d))
 
 ### Continuous Integration
 
+- skip auto-generated changelog and contributors commits in release notes ([0ef2f7a](https://github.com/somaz94/network-policy-generator/commit/0ef2f7aa31ed6b2337ee99f3c56a854d898b372d))
+- revert to body_path RELEASE.md in release workflow ([e5b525c](https://github.com/somaz94/network-policy-generator/commit/e5b525c577d17670ef5f718fc6c9db57851dd21c))
+- use generate_release_notes instead of RELEASE.md ([29df867](https://github.com/somaz94/network-policy-generator/commit/29df867c7bcffaabc4168cb10b6085f46d587a6e))
+- restrict push trigger to main branch to prevent duplicate CI runs ([f7f644b](https://github.com/somaz94/network-policy-generator/commit/f7f644bce1edcadb185e13c4afd4793be329032a))
+- add auto-generated PR body script for make pr ([43aeb69](https://github.com/somaz94/network-policy-generator/commit/43aeb69429fef606c2816fa6ffd5d9f9941d1c34))
 - migrate gitlab-mirror workflow to multi-git-mirror action ([91ffe6a](https://github.com/somaz94/network-policy-generator/commit/91ffe6aefb27dc387ee092fbf4a3399229ba7300))
 
 ### Chores
 
+- **deps:** bump azure/setup-helm from 4 to 5 ([a4b33a8](https://github.com/somaz94/network-policy-generator/commit/a4b33a8cbc18758cb9d3b4a8469163d3c6ed99ff))
+- **deps:** bump the go-minor group with 3 updates (#10) ([#10](https://github.com/somaz94/network-policy-generator/pull/10)) ([cba4f22](https://github.com/somaz94/network-policy-generator/commit/cba4f224b01da9a6e0ba62ace03f613a118485b2))
+- add workflow Makefile targets (check-gh, branch, pr) ([7cf7aa9](https://github.com/somaz94/network-policy-generator/commit/7cf7aa9cda97a66ded9ab30a336794f876e1e875))
 - **deps:** bump github.com/onsi/gomega in the go-minor group ([312648f](https://github.com/somaz94/network-policy-generator/commit/312648fb77839b96de594e5efed641d61e3ad195))
 
 ### Contributors
@@ -35,7 +50,6 @@ All notable changes to this project will be documented in this file.
 - add CLAUDE.md project guide ([015f9b2](https://github.com/somaz94/network-policy-generator/commit/015f9b21124c1a6038bd84d7524a0626fb72c883))
 - add local source test note to TESTING.md ([aabf0f1](https://github.com/somaz94/network-policy-generator/commit/aabf0f18d13a526348d37dc602e4833d61ced369))
 - fix incomplete documentation and add missing template samples ([2f2bd9f](https://github.com/somaz94/network-policy-generator/commit/2f2bd9f5946f1a558d45320903b2a1b8638fc614))
-- update changelog ([7a45b27](https://github.com/somaz94/network-policy-generator/commit/7a45b2728c3b81e30aa89e2f361e392e8335d212))
 
 ### Chores
 
@@ -83,18 +97,11 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
-- update changelog ([4f7afc9](https://github.com/somaz94/network-policy-generator/commit/4f7afc989bdbee19c8fc2dc94f673cd690042388))
-- update changelog ([7558656](https://github.com/somaz94/network-policy-generator/commit/75586567602665c39ec8409ab25137338016e194))
-- update changelog ([0178521](https://github.com/somaz94/network-policy-generator/commit/01785213b1a6c150115f7874bc80d1c448e867ac))
 - update TESTING.md metrics section to use port-forward ([54e292b](https://github.com/somaz94/network-policy-generator/commit/54e292bde74e938aafb4460e3c6167101740bd4c))
 - add event recording, metrics, webhook to README and docs ([c71b248](https://github.com/somaz94/network-policy-generator/commit/c71b24804e5a74a90a86f68fb1bdff62bccfe0ca))
 - README.md ([8205253](https://github.com/somaz94/network-policy-generator/commit/8205253041b72866fc766ba67d39bf21a55078ad))
-- update CONTRIBUTORS.md ([f84eb64](https://github.com/somaz94/network-policy-generator/commit/f84eb64e0a7192cf63bec8b1e4281cbf51d4be05))
-- update changelog ([e5d26fb](https://github.com/somaz94/network-policy-generator/commit/e5d26fb01f4476a5da06819a75167ca0383c71c8))
 - add new features documentation to README, HELM, and TESTING guides ([d89f875](https://github.com/somaz94/network-policy-generator/commit/d89f87536f2b769917b6fedaf539708737d4a6f8))
-- update changelog ([2a79503](https://github.com/somaz94/network-policy-generator/commit/2a795031e52bb5ef39f6a81dd57536e73721e500))
 - add dist/install.yaml and e2e test documentation ([5f5c7eb](https://github.com/somaz94/network-policy-generator/commit/5f5c7eb3bea839a751ba38af72d9573d764d5de8))
-- update changelog ([07ad8d5](https://github.com/somaz94/network-policy-generator/commit/07ad8d527b2a34fc6b6de0e1fc1d3c29a33b2980))
 
 ### Tests
 
@@ -132,10 +139,6 @@ All notable changes to this project will be documented in this file.
 ### Performance Improvements
 
 - optimize Dockerfile with build cache and smaller binary ([41c559e](https://github.com/somaz94/network-policy-generator/commit/41c559e8a4d6fb616599b41fbfed57b8219c76f9))
-
-### Documentation
-
-- update changelog ([880a1fc](https://github.com/somaz94/network-policy-generator/commit/880a1fc099c84498cd052be8db165549ebe4c5fb))
 
 ### Chores
 
@@ -196,8 +199,6 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
-- update CONTRIBUTORS.md ([99273d6](https://github.com/somaz94/network-policy-generator/commit/99273d60a4b18a868cc1a706b81f8985dd4685d7))
-- update changelog ([910b521](https://github.com/somaz94/network-policy-generator/commit/910b52149c510be6147da028b11743f2fa10d2a6))
 - update version references and fix README badge ([7631282](https://github.com/somaz94/network-policy-generator/commit/76312821de46fceb3a6578c6c95f806aaab60dcf))
 - add Cilium CNI support info to README ([cb5420e](https://github.com/somaz94/network-policy-generator/commit/cb5420eaa102cbbda5bf288486027e70a982b361))
 - README.md ([bca99da](https://github.com/somaz94/network-policy-generator/commit/bca99da9275cb9eda23ba7d404aafce49fb08b06))
