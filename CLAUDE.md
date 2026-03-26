@@ -6,6 +6,7 @@
 
 - Do not include `Co-Authored-By` lines in commit messages.
 - Do not push to remote. Only commit. The user will push manually.
+- Do not modify git config.
 
 <br/>
 
