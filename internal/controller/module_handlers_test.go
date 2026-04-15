@@ -215,7 +215,7 @@ var _ = Describe("Mode Handlers", func() {
 
 	Context("CiliumGVK helper", func() {
 		It("should return correct GVK", func() {
-			gvk := ciliumGVK()
+			gvk := gvkForEngine(policy.EngineCilium)
 			Expect(gvk.Group).To(Equal("cilium.io"))
 			Expect(gvk.Version).To(Equal("v2"))
 			Expect(gvk.Kind).To(Equal("CiliumNetworkPolicy"))
@@ -242,7 +242,7 @@ var _ = Describe("Mode Handlers", func() {
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Cilium CRD is not installed in envtest, so applyCiliumPolicy will fail
-			_, err := reconciler.handleCiliumEnforcing(ctx, generator)
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -315,7 +315,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err := errReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("enforcing status failed"))
 		})
@@ -512,7 +512,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err := errReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("create policy failed"))
 		})
@@ -532,7 +532,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err := errReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("connection refused"))
 		})
@@ -686,7 +686,7 @@ var _ = Describe("Mode Handlers", func() {
 			generator.Spec.DryRun = true
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
-			result, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			result, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
 
@@ -721,7 +721,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := errReconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err := errReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("dryrun status failed"))
 		})
@@ -747,7 +747,7 @@ var _ = Describe("Mode Handlers", func() {
 			}
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
-			result, err := reconciler.handleCiliumEnforcing(ctx, generator)
+			result, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
 
@@ -787,7 +787,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := errReconciler.handleCiliumEnforcing(ctx, generator)
+			_, err := errReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cilium dryrun status failed"))
 		})
@@ -799,7 +799,7 @@ var _ = Describe("Mode Handlers", func() {
 			generator.Spec.Mode = "enforcing"
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
-			result, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			result, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
 
@@ -818,7 +818,7 @@ var _ = Describe("Mode Handlers", func() {
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// First apply creates the policy
-			_, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Re-fetch
@@ -827,7 +827,7 @@ var _ = Describe("Mode Handlers", func() {
 			}, generator)).To(Succeed())
 
 			// Second apply should be "Updated"
-			_, err = reconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err = reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
@@ -848,7 +848,7 @@ var _ = Describe("Mode Handlers", func() {
 			}
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
-			_, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 
 			np := &networkingv1.NetworkPolicy{}
@@ -881,7 +881,7 @@ var _ = Describe("Mode Handlers", func() {
 			}
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
-			_, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 
 			np := &networkingv1.NetworkPolicy{}
@@ -942,7 +942,7 @@ var _ = Describe("Mode Handlers", func() {
 			}
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
-			_, err := reconciler.handleKubernetesEnforcing(ctx, generator)
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 
 			np := &networkingv1.NetworkPolicy{}
@@ -967,7 +967,7 @@ var _ = Describe("Mode Handlers", func() {
 
 	Context("CalicoGVK helper", func() {
 		It("should return correct GVK", func() {
-			gvk := calicoGVK()
+			gvk := gvkForEngine(policy.EngineCalico)
 			Expect(gvk.Group).To(Equal("crd.projectcalico.org"))
 			Expect(gvk.Version).To(Equal("v1"))
 			Expect(gvk.Kind).To(Equal("NetworkPolicy"))
@@ -993,7 +993,7 @@ var _ = Describe("Mode Handlers", func() {
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Calico CRD is not installed in envtest, so applyCalicoPolicy will fail
-			_, err := reconciler.handleCalicoEnforcing(ctx, generator)
+			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -1029,7 +1029,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			result, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			result, err := calicoReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
 		})
@@ -1052,7 +1052,7 @@ var _ = Describe("Mode Handlers", func() {
 			}
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
-			result, err := reconciler.handleCalicoEnforcing(ctx, generator)
+			result, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
 
@@ -1082,7 +1082,7 @@ var _ = Describe("Mode Handlers", func() {
 			}
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
-			// handleEnforcingMode should dispatch to handleCalicoEnforcing
+			// handleEnforcingMode should dispatch to handleEnforcingMode
 			// Calico CRD not installed, so it will fail at apply time
 			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
@@ -1512,7 +1512,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			_, err := calicoReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("calico create failed"))
 		})
@@ -1547,7 +1547,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			_, err := calicoReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("calico connection timeout"))
 		})
@@ -1584,7 +1584,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			_, err := calicoReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("calico status update failed"))
 		})
@@ -1621,7 +1621,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			result, err := calicoReconciler.handleCalicoEnforcing(ctx, generator)
+			result, err := calicoReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
 		})
@@ -1709,7 +1709,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := errReconciler.handleCalicoEnforcing(ctx, generator)
+			_, err := errReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("calico dryrun status failed"))
 		})
@@ -1748,7 +1748,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			result, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
+			result, err := ciliumReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
 		})
@@ -1785,7 +1785,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			result, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
+			result, err := ciliumReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Minute))
 		})
@@ -1822,7 +1822,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
+			_, err := ciliumReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cilium create failed"))
 		})
@@ -1858,7 +1858,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
+			_, err := ciliumReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("connection timeout"))
 		})
@@ -1896,7 +1896,7 @@ var _ = Describe("Mode Handlers", func() {
 				Recorder:  record.NewFakeRecorder(100),
 			}
 
-			_, err := ciliumReconciler.handleCiliumEnforcing(ctx, generator)
+			_, err := ciliumReconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("cilium status update failed"))
 		})

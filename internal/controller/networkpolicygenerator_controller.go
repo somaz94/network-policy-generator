@@ -207,12 +207,12 @@ func (r *NetworkPolicyGeneratorReconciler) deleteNetworkPolicies(ctx context.Con
 				return err
 			}
 		case policy.EngineCilium:
-			if err := r.deleteUnstructuredPolicy(ctx, ns, policyName, ciliumGVK()); err != nil {
+			if err := r.deleteUnstructuredPolicy(ctx, ns, policyName, gvkForEngine(policy.EngineCilium)); err != nil {
 				log.Error(err, "failed to delete CiliumNetworkPolicy", "namespace", ns, "name", policyName)
 				return err
 			}
 		case policy.EngineCalico:
-			if err := r.deleteUnstructuredPolicy(ctx, ns, policyName, calicoGVK()); err != nil {
+			if err := r.deleteUnstructuredPolicy(ctx, ns, policyName, gvkForEngine(policy.EngineCalico)); err != nil {
 				log.Error(err, "failed to delete Calico NetworkPolicy", "namespace", ns, "name", policyName)
 				return err
 			}
