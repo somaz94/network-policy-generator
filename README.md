@@ -79,7 +79,7 @@ helm install npg network-policy-generator/network-policy-generator
 
 # Or install with custom values
 helm install npg network-policy-generator/network-policy-generator \
-  --set image.tag=v0.2.1 \
+  --set image.tag=v0.3.0 \
   --set crds.cleanup=false \
   --namespace npg-system --create-namespace
 ```
@@ -107,7 +107,7 @@ cd network-policy-generator
 make install
 
 # Deploy the controller
-make deploy IMG=somaz940/network-policy-generator:v0.2.1
+make deploy IMG=somaz940/network-policy-generator:v0.3.0
 ```
 
 <br/>
