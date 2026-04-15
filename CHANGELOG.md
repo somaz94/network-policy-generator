@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-03-26)
+## [v0.3.0](https://github.com/somaz94/network-policy-generator/compare/v0.2.1...v0.3.0) (2026-04-15)
 
 ### Features
 
@@ -14,8 +14,13 @@ All notable changes to this project will be documented in this file.
 - prevent duplicate quote in bump-version.sh values.yaml sed pattern ([a49cd71](https://github.com/somaz94/network-policy-generator/commit/a49cd7160c9378cb1fa613d948ea62cf831e73a5))
 - use GITHUB_TOKEN for dependabot auto merge ([6fc4a06](https://github.com/somaz94/network-policy-generator/commit/6fc4a06579d39d10f8ea1fd0e7bb402120913079))
 
+### Code Refactoring
+
+- unify enforcing handlers across policy engines via PolicyEngine interface ([25f5f72](https://github.com/somaz94/network-policy-generator/commit/25f5f725840634fac6230a66c4efcacea6115a0b))
+
 ### Documentation
 
+- remove duplicate rules covered by global CLAUDE.md ([dcd9a8b](https://github.com/somaz94/network-policy-generator/commit/dcd9a8b186c7c564a3a914842bf94ac14fa646d6))
 - add DEVELOPMENT.md ([7502b9a](https://github.com/somaz94/network-policy-generator/commit/7502b9a19f7706bc942463720a278e19605140ee))
 - add no-push rule to CLAUDE.md ([f7a88dd](https://github.com/somaz94/network-policy-generator/commit/f7a88ddb754375757c2ae265edc0585107bcfff0))
 - rollback README.md ([5c4c338](https://github.com/somaz94/network-policy-generator/commit/5c4c33832ccd0389b6c46bf23ddbcc935aaff294))
@@ -23,6 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ### Continuous Integration
 
+- add docker build job and bump action versions in release workflow ([aeb6b2c](https://github.com/somaz94/network-policy-generator/commit/aeb6b2c5ba0e67e03749c0d0cce1fc15b19fa411))
 - skip auto-generated changelog and contributors commits in release notes ([0ef2f7a](https://github.com/somaz94/network-policy-generator/commit/0ef2f7aa31ed6b2337ee99f3c56a854d898b372d))
 - revert to body_path RELEASE.md in release workflow ([e5b525c](https://github.com/somaz94/network-policy-generator/commit/e5b525c577d17670ef5f718fc6c9db57851dd21c))
 - use generate_release_notes instead of RELEASE.md ([29df867](https://github.com/somaz94/network-policy-generator/commit/29df867c7bcffaabc4168cb10b6085f46d587a6e))
@@ -32,6 +38,9 @@ All notable changes to this project will be documented in this file.
 
 ### Chores
 
+- bump version to v0.3.0 ([4355988](https://github.com/somaz94/network-policy-generator/commit/4355988a4ceb05a82208275870226cd55d950aa4))
+- remove duplicate rules from CLAUDE.md (moved to global) ([dd8ed94](https://github.com/somaz94/network-policy-generator/commit/dd8ed944ac09007ff11629b2b5ecaf31a6567117))
+- add git config protection to CLAUDE.md ([e0f26e3](https://github.com/somaz94/network-policy-generator/commit/e0f26e3edb0863db19eeae003c59abc983e8ac9d))
 - **deps:** bump azure/setup-helm from 4 to 5 ([a4b33a8](https://github.com/somaz94/network-policy-generator/commit/a4b33a8cbc18758cb9d3b4a8469163d3c6ed99ff))
 - **deps:** bump the go-minor group with 3 updates (#10) ([#10](https://github.com/somaz94/network-policy-generator/pull/10)) ([cba4f22](https://github.com/somaz94/network-policy-generator/commit/cba4f224b01da9a6e0ba62ace03f613a118485b2))
 - add workflow Makefile targets (check-gh, branch, pr) ([7cf7aa9](https://github.com/somaz94/network-policy-generator/commit/7cf7aa9cda97a66ded9ab30a336794f876e1e875))
