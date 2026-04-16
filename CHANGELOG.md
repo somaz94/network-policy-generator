@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased (2026-04-16)
+
+### Chores
+
+- **deps:** bump docker/setup-qemu-action from 3 to 4 ([0642612](https://github.com/somaz94/network-policy-generator/commit/06426128c06da82896e56c7b98873994ca173da8))
+
+<br/>
+
 ## [v0.3.0](https://github.com/somaz94/network-policy-generator/compare/v0.2.1...v0.3.0) (2026-04-15)
 
 ### Features
