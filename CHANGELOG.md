@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Chores
 
+- **deps:** bump actions/github-script from 8 to 9 ([ba42c8e](https://github.com/somaz94/network-policy-generator/commit/ba42c8e802954c9ec687fb9b03fb76dcb964145c))
 - **deps:** bump docker/login-action from 3 to 4 ([ba14f2a](https://github.com/somaz94/network-policy-generator/commit/ba14f2a31828f737f1365812b4eecfc29b878ecd))
 - **deps:** bump docker/setup-qemu-action from 3 to 4 ([0642612](https://github.com/somaz94/network-policy-generator/commit/06426128c06da82896e56c7b98873994ca173da8))
 
