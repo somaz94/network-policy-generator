@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   release:
@@ -77,3 +78,21 @@ jobs:
           git add helm-repo/
           git commit -m "chore: update helm chart repository" || echo "No changes to commit"
           git push origin gh-pages
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push chart to GHCR (OCI)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/oci-stage
+          helm package ./helm/network-policy-generator -d /tmp/oci-stage/
+          for tgz in /tmp/oci-stage/*.tgz; do
+            echo "==> push $tgz"
+            helm push "$tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
+          done

@@ -69,6 +69,17 @@ This tool helps security teams and cluster administrators implement network segm
 
 ### Option 1: Helm (Recommended)
 
+**Recommended: OCI registry (Helm 3.8+)**
+
+```bash
+# Single-command install — no helm repo add needed
+helm install npg oci://ghcr.io/somaz94/charts/network-policy-generator \
+  --version 0.3.0 \
+  --namespace npg-system --create-namespace
+```
+
+**Alternative: classic Helm repo**
+
 ```bash
 # Add the Helm repository
 helm repo add network-policy-generator https://somaz94.github.io/network-policy-generator/helm-repo
