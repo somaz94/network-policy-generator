@@ -90,9 +90,11 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
-          mkdir -p /tmp/oci-stage
-          helm package ./helm/network-policy-generator -d /tmp/oci-stage/
-          for tgz in /tmp/oci-stage/*.tgz; do
+          # Reuse the tarball already packaged by the gh-pages deploy step.
+          # `/tmp/helm-repo-staging/` is created there and persists for this step.
+          # Re-running `helm package ./helm/<chart>` here would fail because the
+          # gh-pages branch checkout leaves only `helm-repo/` in the working tree.
+          for tgz in /tmp/helm-repo-staging/*.tgz; do
             echo "==> push $tgz"
             helm push "$tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
           done
