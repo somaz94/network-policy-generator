@@ -9,30 +9,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Run on Ubuntu
     runs-on: ubuntu-latest
     steps:
-      - name: Clone the code
-        uses: actions/checkout@v6
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-
-      - name: Running Tests
-        run: |
-          go mod tidy
-          make test
-
-      - name: Verify manifests and generated code
-        run: |
-          make manifests generate
-          git diff --exit-code -- config/ api/
-          if [ $? -ne 0 ]; then
-            echo "::error::Generated manifests or deepcopy are out of date. Run 'make manifests generate' and commit the changes."
-            exit 1
-          fi
+      - uses: actions/checkout@v6
+      - uses: somaz94/go-kubebuilder-test-action@v1
