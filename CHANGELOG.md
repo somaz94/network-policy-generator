@@ -2,14 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-04-16)
+## Unreleased (2026-06-16)
+
+### Features
+
+- **ci:** publish Helm chart to GHCR (OCI) alongside gh-pages ([a071ed1](https://github.com/somaz94/network-policy-generator/commit/a071ed1dafb56b15397441d75d8dfd129cbce386))
+
+### Bug Fixes
+
+- **ci:** use staged tarball for OCI push (gh-pages branch checkout invalidates ./helm/ path) ([322d8c5](https://github.com/somaz94/network-policy-generator/commit/322d8c52767cb7548a1ccb3fa71679a63d96d87a))
+
+### Continuous Integration
+
+- add DCO check via shared reusable workflow (#21) ([#21](https://github.com/somaz94/network-policy-generator/pull/21)) ([f48e4cd](https://github.com/somaz94/network-policy-generator/commit/f48e4cd0ef92fe7d4ca6fd63692d787a905cbd56))
+- add concurrency guards to recurring workflows ([ebd1d9e](https://github.com/somaz94/network-policy-generator/commit/ebd1d9ef5fdffad3c9774d0ed93c131ca8a06c48))
+- use kind-e2e-test-action@v1 (replace inline e2e script) ([636b91a](https://github.com/somaz94/network-policy-generator/commit/636b91acc0f0aabb5ffcb90041e95d82b23eadce))
+- use go-kubebuilder-test-action@v1 (replace inline test script) ([227663c](https://github.com/somaz94/network-policy-generator/commit/227663ceedbefdac3111e2266e25f5459e50c124))
+- use helm-chart-release-action@v1 (replace inline release script) ([aa703b0](https://github.com/somaz94/network-policy-generator/commit/aa703b08b12967b12c82181852224d040382bd70))
 
 ### Chores
 
+- **deps:** bump the go-minor group with 2 updates (#20) ([#20](https://github.com/somaz94/network-policy-generator/pull/20)) ([66e3aad](https://github.com/somaz94/network-policy-generator/commit/66e3aadab8eada79be9476858ac023d48deaf2bc))
+- **deps:** bump the go-minor group with 4 updates (#19) ([#19](https://github.com/somaz94/network-policy-generator/pull/19)) ([54458d4](https://github.com/somaz94/network-policy-generator/commit/54458d47ebe7fb3d84faa9bdd5bfc8e13670b883))
+- **deps:** bump sigs.k8s.io/controller-runtime in the go-minor group (#18) ([#18](https://github.com/somaz94/network-policy-generator/pull/18)) ([c6ecdce](https://github.com/somaz94/network-policy-generator/commit/c6ecdce7af6ae1fab079c8d6fb50a0ac4bacb563))
+- **deps:** bump the go-minor group with 6 updates (#17) ([#17](https://github.com/somaz94/network-policy-generator/pull/17)) ([79c5e3c](https://github.com/somaz94/network-policy-generator/commit/79c5e3c76930b18bd889ee9aa6b717af4f04daca))
+- **deps:** bump the go-minor group with 3 updates (#16) ([#16](https://github.com/somaz94/network-policy-generator/pull/16)) ([932fd63](https://github.com/somaz94/network-policy-generator/commit/932fd633ed1f70b9ecfc9dabc84fedaf37ab27b6))
 - **deps:** bump dependabot/fetch-metadata from 2 to 3 ([e9e1066](https://github.com/somaz94/network-policy-generator/commit/e9e1066b53297f59ad5f102d77b85c732214182e))
 - **deps:** bump actions/github-script from 8 to 9 ([ba42c8e](https://github.com/somaz94/network-policy-generator/commit/ba42c8e802954c9ec687fb9b03fb76dcb964145c))
 - **deps:** bump docker/login-action from 3 to 4 ([ba14f2a](https://github.com/somaz94/network-policy-generator/commit/ba14f2a31828f737f1365812b4eecfc29b878ecd))
 - **deps:** bump docker/setup-qemu-action from 3 to 4 ([0642612](https://github.com/somaz94/network-policy-generator/commit/06426128c06da82896e56c7b98873994ca173da8))
+
+### Contributors
+
+- somaz
 
 <br/>
 
