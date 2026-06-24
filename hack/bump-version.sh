@@ -83,6 +83,12 @@ update_file() {
         return
     fi
 
+    if ! grep -q -e "${pattern}" "${file}"; then
+        echo "  [WARN] ${label} (pattern not found -- version drift?)" >&2
+        WARN_COUNT=$(( ${WARN_COUNT:-0} + 1 ))
+        return
+    fi
+
     if sed --version >/dev/null 2>&1; then
         sed -i "s|${pattern}|${replacement}|g" "${file}"
     else
@@ -150,6 +156,11 @@ else
 fi
 
 echo ""
+if [[ "${WARN_COUNT:-0}" -gt 0 ]]; then
+    echo "" >&2
+    echo "WARNING: ${WARN_COUNT} file(s) were NOT updated (pattern not found). Check for version drift above." >&2
+fi
+
 echo "Done! Version bumped to ${NEW_VERSION}"
 echo ""
 echo "Next steps:"
