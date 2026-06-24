@@ -1,5 +1,7 @@
 # Network Policy Generator
 
+> Kubernetes operator that auto-generates NetworkPolicies from observed traffic — learning/enforcing modes with multi-CNI (Kubernetes/Cilium/Calico) support.
+
 ![Top Language](https://img.shields.io/github/languages/top/somaz94/network-policy-generator?color=green&logo=go&logoColor=b)
 ![Version](https://img.shields.io/github/v/tag/somaz94/network-policy-generator?label=version&logo=kubernetes&logoColor=white)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
