@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-06-16)
+## Unreleased (2026-06-25)
 
 ### Features
 
@@ -10,7 +10,13 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- warn when bump-version.sh finds no version to replace ([68e7aad](https://github.com/somaz94/network-policy-generator/commit/68e7aad636c21b200d9d87f4276fb0043fd1ecc5))
 - **ci:** use staged tarball for OCI push (gh-pages branch checkout invalidates ./helm/ path) ([322d8c5](https://github.com/somaz94/network-policy-generator/commit/322d8c52767cb7548a1ccb3fa71679a63d96d87a))
+
+### Documentation
+
+- add keyword-rich tagline under title for discovery ([ab6ee81](https://github.com/somaz94/network-policy-generator/commit/ab6ee81ff37a74998d0897bbb304bf8eadb16569))
+- document DCO sign-off requirement in CONTRIBUTING ([3fa92b8](https://github.com/somaz94/network-policy-generator/commit/3fa92b8063e16b838cd2a58b30b61db4bc867617))
 
 ### Continuous Integration
 
@@ -22,6 +28,9 @@ All notable changes to this project will be documented in this file.
 
 ### Chores
 
+- **deps:** bump actions/checkout from 6 to 7 (#24) ([#24](https://github.com/somaz94/network-policy-generator/pull/24)) ([b62c5a7](https://github.com/somaz94/network-policy-generator/commit/b62c5a78824ccef13b3c1c226890adf6f2a6ddfc))
+- **deps:** bump the go-minor group with 2 updates (#23) ([#23](https://github.com/somaz94/network-policy-generator/pull/23)) ([6f75aec](https://github.com/somaz94/network-policy-generator/commit/6f75aeccdb401158142e8c71eab20d0615da9aad))
+- **deps:** bump the go-minor group with 5 updates (#22) ([#22](https://github.com/somaz94/network-policy-generator/pull/22)) ([fff22f7](https://github.com/somaz94/network-policy-generator/commit/fff22f7747ea6741b97615171c57f58eaab26fa7))
 - **deps:** bump the go-minor group with 2 updates (#20) ([#20](https://github.com/somaz94/network-policy-generator/pull/20)) ([66e3aad](https://github.com/somaz94/network-policy-generator/commit/66e3aadab8eada79be9476858ac023d48deaf2bc))
 - **deps:** bump the go-minor group with 4 updates (#19) ([#19](https://github.com/somaz94/network-policy-generator/pull/19)) ([54458d4](https://github.com/somaz94/network-policy-generator/commit/54458d47ebe7fb3d84faa9bdd5bfc8e13670b883))
 - **deps:** bump sigs.k8s.io/controller-runtime in the go-minor group (#18) ([#18](https://github.com/somaz94/network-policy-generator/pull/18)) ([c6ecdce](https://github.com/somaz94/network-policy-generator/commit/c6ecdce7af6ae1fab079c8d6fb50a0ac4bacb563))
