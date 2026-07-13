@@ -72,17 +72,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 git commit -m "feat: add support for egress policies"
 ```
 
-### 4. Sign off your commits (DCO)
-
-This project uses the [Developer Certificate of Origin](https://github.com/somaz94/.github/blob/main/DCO.md) instead of a CLA. Every commit must carry a `Signed-off-by` trailer — add it with `-s`:
-
-```bash
-git commit -s -m "feat: your change"
-```
-
-A CI check rejects pull requests whose commits are not signed off. See [DCO.md](https://github.com/somaz94/.github/blob/main/DCO.md) for the full text and how to fix unsigned commits.
-
-### 5. Push and create a PR
+### 4. Push and create a PR
 
 ```bash
 git push origin feat/your-feature
