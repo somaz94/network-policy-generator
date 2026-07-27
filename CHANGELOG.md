@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-06-25)
+## Unreleased (2026-07-27)
 
 ### Features
 
@@ -15,11 +15,21 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
+- remove DCO sign-off instructions ([9e126e9](https://github.com/somaz94/network-policy-generator/commit/9e126e9c0a95d92ad42357f568c2f05d59cbac11))
 - add keyword-rich tagline under title for discovery ([ab6ee81](https://github.com/somaz94/network-policy-generator/commit/ab6ee81ff37a74998d0897bbb304bf8eadb16569))
 - document DCO sign-off requirement in CONTRIBUTING ([3fa92b8](https://github.com/somaz94/network-policy-generator/commit/3fa92b8063e16b838cd2a58b30b61db4bc867617))
 
 ### Continuous Integration
 
+- remove DCO workflow ([ff2933c](https://github.com/somaz94/network-policy-generator/commit/ff2933c8292bd6c752f635543467217c6639cedd))
+- adopt semantic-pr, labels, lock-threads, PR size, and auto-assign reusables ([a466fb3](https://github.com/somaz94/network-policy-generator/commit/a466fb3182a32f991e4c26d5ca83adf70bf1073c))
+- use reusable stale-issues workflow ([ead1b27](https://github.com/somaz94/network-policy-generator/commit/ead1b279b11f1c8a57661eb4d1be5ff4ef79abc4))
+- use reusable issue-greeting workflow ([72e9797](https://github.com/somaz94/network-policy-generator/commit/72e9797948ca56134e6f2d10aa3c7cb50afaf6bd))
+- use reusable dependabot-auto-merge workflow ([6303be3](https://github.com/somaz94/network-policy-generator/commit/6303be31183b51e47b145e1cb7d33dc78388af0c))
+- use reusable contributors workflow ([dbc7651](https://github.com/somaz94/network-policy-generator/commit/dbc7651656e80b345589991dcd5138c37443b3bd))
+- gate e2e on fork PRs via ok-to-test label ([dd62db4](https://github.com/somaz94/network-policy-generator/commit/dd62db4ef1555ebec7079013049ffd1011d752a8))
+- add ok-to-test workflow stub ([2c9ec33](https://github.com/somaz94/network-policy-generator/commit/2c9ec33e979838992a295b278dcd746bf624f134))
+- add PR welcome workflow stub ([0c849ac](https://github.com/somaz94/network-policy-generator/commit/0c849aca5e64717af918a452d8ac5a4239dee851))
 - add DCO check via shared reusable workflow (#21) ([#21](https://github.com/somaz94/network-policy-generator/pull/21)) ([f48e4cd](https://github.com/somaz94/network-policy-generator/commit/f48e4cd0ef92fe7d4ca6fd63692d787a905cbd56))
 - add concurrency guards to recurring workflows ([ebd1d9e](https://github.com/somaz94/network-policy-generator/commit/ebd1d9ef5fdffad3c9774d0ed93c131ca8a06c48))
 - use kind-e2e-test-action@v1 (replace inline e2e script) ([636b91a](https://github.com/somaz94/network-policy-generator/commit/636b91acc0f0aabb5ffcb90041e95d82b23eadce))
@@ -28,6 +38,8 @@ All notable changes to this project will be documented in this file.
 
 ### Chores
 
+- **deps:** bump actions/setup-go from 6 to 7 (#26) ([#26](https://github.com/somaz94/network-policy-generator/pull/26)) ([a04c794](https://github.com/somaz94/network-policy-generator/commit/a04c7945192892aa39c37d27be3dd253f24642ae))
+- **deps:** bump github.com/prometheus/client_golang (#25) ([#25](https://github.com/somaz94/network-policy-generator/pull/25)) ([12ac154](https://github.com/somaz94/network-policy-generator/commit/12ac1541aaf2e32bb70273239f737786154fa36b))
 - **deps:** bump actions/checkout from 6 to 7 (#24) ([#24](https://github.com/somaz94/network-policy-generator/pull/24)) ([b62c5a7](https://github.com/somaz94/network-policy-generator/commit/b62c5a78824ccef13b3c1c226890adf6f2a6ddfc))
 - **deps:** bump the go-minor group with 2 updates (#23) ([#23](https://github.com/somaz94/network-policy-generator/pull/23)) ([6f75aec](https://github.com/somaz94/network-policy-generator/commit/6f75aeccdb401158142e8c71eab20d0615da9aad))
 - **deps:** bump the go-minor group with 5 updates (#22) ([#22](https://github.com/somaz94/network-policy-generator/pull/22)) ([fff22f7](https://github.com/somaz94/network-policy-generator/commit/fff22f7747ea6741b97615171c57f58eaab26fa7))
