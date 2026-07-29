@@ -135,6 +135,18 @@ update_file "${ROOT_DIR}/docs/HELM.md" \
     "${NEW_VERSION}" \
     "docs/HELM.md"
 
+# The OCI install examples reference the bare chart version (no "v" prefix),
+# so they need the chart-version substitution as well as the image-tag one.
+update_file "${ROOT_DIR}/README.md" \
+    "--version ${CURRENT_CHART_VERSION}" \
+    "--version ${CHART_VERSION}" \
+    "README.md (OCI chart version)"
+
+update_file "${ROOT_DIR}/docs/HELM.md" \
+    "--version ${CURRENT_CHART_VERSION}" \
+    "--version ${CHART_VERSION}" \
+    "docs/HELM.md (OCI chart version)"
+
 update_file "${ROOT_DIR}/docs/VERSION_BUMP.md" \
     "${CURRENT_VERSION}" \
     "${NEW_VERSION}" \
