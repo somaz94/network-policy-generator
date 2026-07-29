@@ -634,7 +634,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: somaz940/network-policy-generator:v0.3.0
+        image: somaz940/network-policy-generator:v0.4.0
         livenessProbe:
           httpGet:
             path: /healthz

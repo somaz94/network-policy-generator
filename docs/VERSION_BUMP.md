@@ -9,7 +9,7 @@ Use the automated script to bump versions across all files at once:
 make version
 
 # Bump to a new version
-make bump-version VERSION=v0.3.0
+make bump-version VERSION=v0.4.0
 ```
 
 This automatically updates all required files and regenerates `dist/install.yaml`.
@@ -24,11 +24,11 @@ The `bump-version` script updates the following files:
 
 | File | Field | Example |
 |------|-------|---------|
-| `Makefile` | `IMG ?= somaz940/network-policy-generator:<version>` | `v0.3.0` |
-| `helm/network-policy-generator/Chart.yaml` | `version` (chart version, without `v` prefix) | `0.3.0` |
-| `helm/network-policy-generator/Chart.yaml` | `appVersion` (app version, with `v` prefix) | `"v0.3.0"` |
-| `helm/network-policy-generator/values.yaml` | `image.tag` | `v0.3.0` |
-| `config/manager/kustomization.yaml` | `newTag` | `v0.3.0` |
+| `Makefile` | `IMG ?= somaz940/network-policy-generator:<version>` | `v0.4.0` |
+| `helm/network-policy-generator/Chart.yaml` | `version` (chart version, without `v` prefix) | `0.4.0` |
+| `helm/network-policy-generator/Chart.yaml` | `appVersion` (app version, with `v` prefix) | `"v0.4.0"` |
+| `helm/network-policy-generator/values.yaml` | `image.tag` | `v0.4.0` |
+| `config/manager/kustomization.yaml` | `newTag` | `v0.4.0` |
 
 ### Documentation Files
 
@@ -54,14 +54,14 @@ The `bump-version` script updates the following files:
 ./hack/bump-version.sh --current
 
 # Bump version (validates vX.Y.Z format)
-./hack/bump-version.sh v0.3.0
+./hack/bump-version.sh v0.4.0
 ```
 
 Or via Makefile:
 
 ```bash
 make version                       # Show current version
-make bump-version VERSION=v0.3.0   # Bump to v0.3.0
+make bump-version VERSION=v0.4.0   # Bump to v0.4.0
 ```
 
 <br/>
