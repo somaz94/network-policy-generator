@@ -13,9 +13,6 @@ linters:
     - ginkgolinter
     - goconst
     - gocyclo
-    - gofmt
-    - goimports
-    - gosimple
     - govet
     - ineffassign
     - lll
@@ -24,7 +21,6 @@ linters:
     - prealloc
     - revive
     - staticcheck
-    - typecheck
     - unconvert
     - unparam
     - unused
@@ -42,3 +38,8 @@ linters:
     revive:
       rules:
         - name: comment-spacings
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
