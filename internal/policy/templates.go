@@ -1,6 +1,10 @@
 package policy
 
-import securityv1 "github.com/somaz94/network-policy-generator/api/v1"
+import (
+	"strconv"
+
+	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
+)
 
 // TemplateName constants
 const (
@@ -135,5 +139,5 @@ func globalRuleKey(r securityv1.GlobalRule) string {
 	if r.NamedPort != "" {
 		return r.Direction + "/" + r.Protocol + "/" + r.NamedPort
 	}
-	return r.Direction + "/" + r.Protocol + "/" + string(rune(r.Port))
+	return r.Direction + "/" + r.Protocol + "/" + strconv.Itoa(int(r.Port))
 }

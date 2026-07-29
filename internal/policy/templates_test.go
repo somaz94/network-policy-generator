@@ -215,3 +215,26 @@ func TestTemplateWithUserRulesPreserved(t *testing.T) {
 	assert.True(t, hasUserRule, "user's custom rule should be preserved")
 	assert.Greater(t, len(spec.GlobalRules), 1, "should have template rules too")
 }
+
+// TestGlobalRuleKeyDistinguishesPorts guards against encoding the port as a rune.
+// The CRD accepts ports 1-65535, but 55296-57343 map onto the UTF-16 surrogate
+// range, which is not a valid code point: string(rune(p)) collapses every one of
+// them to U+FFFD, so distinct rules would share a dedup key and silently drop.
+func TestGlobalRuleKeyDistinguishesPorts(t *testing.T) {
+	ports := []int32{1, 80, 443, 55295, 55296, 55297, 57343, 57344, 65535}
+
+	seen := make(map[string]int32, len(ports))
+	for _, port := range ports {
+		key := globalRuleKey(securityv1.GlobalRule{
+			Type:      "allow",
+			Port:      port,
+			Protocol:  "TCP",
+			Direction: DirectionIngress,
+		})
+		prev, dup := seen[key]
+		require.Falsef(t, dup, "ports %d and %d collide on key %q", prev, port, key)
+		seen[key] = port
+	}
+
+	assert.Len(t, seen, len(ports))
+}
