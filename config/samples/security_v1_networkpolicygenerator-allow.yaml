@@ -6,23 +6,23 @@ metadata:
     app.kubernetes.io/name: network-policy-generator
     app.kubernetes.io/managed-by: kustomize
 spec:
-  mode: "enforcing"  # learning 또는 enforcing
-  # duration: "1m"     # learning 모드일 때만 사용
+  mode: "enforcing"  # learning or enforcing
+  # duration: "1m"     # required when mode is learning
   
   policy:
-    type: "allow"     # allow 또는 deny
-    # allowedNamespaces:     # deny 타입일 때 사용
+    type: "allow"     # allow or deny
+    # allowedNamespaces:     # used when type is deny
     #   - "test-ns1"
     #   - "test-ns2"
-    deniedNamespaces:      # allow 타입일 때 사용
+    deniedNamespaces:      # used when type is allow
       - "test-ns1"
       - "test-ns2"
     
-  globalRules:       # 글로벌 규칙 통합
-    - type: "allow"  # allow 또는 deny
+  globalRules:       # consolidated global rules
+    - type: "allow"  # allow or deny
       port: 80
       protocol: TCP
-      direction: "ingress"  # ingress 또는 egress
+      direction: "ingress"  # ingress or egress
     - type: "allow"
       port: 443
       protocol: TCP

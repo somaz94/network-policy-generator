@@ -108,12 +108,12 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-invalid")
 			generator.Spec.Mode = "invalid"
 
-			// 에러가 발생하는 것이 정상적인 동작
+			// An error here is the expected behavior
 			err := k8sClient.Create(ctx, generator)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("Unsupported value"))
 
-			// 올바른 모드로 변경
+			// Switch to a valid mode
 			generator.Spec.Mode = "learning"
 			generator.Name = generatorName + "-valid"
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())

@@ -101,7 +101,7 @@ func TestMonitor(t *testing.T) {
 		// Wait for first collection and ensure traffic is collected
 		time.Sleep(2 * time.Second)
 
-		// 모니터링 중에 트래픽 데이터 추가
+		// Add traffic data while monitoring is running
 		monitor.addTrafficFlow(securityv1.TrafficFlow{
 			SourceNamespace: testNamespace,
 			SourcePod:       "test-pod",
@@ -122,7 +122,7 @@ func TestMonitor(t *testing.T) {
 		err := monitor.collectTrafficData(ctx)
 		assert.NoError(t, err)
 
-		// 명시적으로 트래픽 데이터 추가
+		// Add traffic data explicitly
 		monitor.addTrafficFlow(securityv1.TrafficFlow{
 			SourceNamespace: testNamespace,
 			SourcePod:       "test-pod",

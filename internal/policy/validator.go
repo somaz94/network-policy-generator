@@ -22,7 +22,7 @@ func (v *Validator) ValidatePolicy(policy *networkingv1.NetworkPolicy, generator
 		return fmt.Errorf("network policy name cannot be empty")
 	}
 
-	// allow 타입은 deniedNamespaces에 정책을 생성하므로 namespace가 다를 수 있음
+	// allow type generates policies in deniedNamespaces, so the namespace may differ
 	if generator.Spec.Policy.Type != PolicyTypeAllow && policy.Namespace != generator.Namespace {
 		return fmt.Errorf("network policy namespace must match generator namespace")
 	}
