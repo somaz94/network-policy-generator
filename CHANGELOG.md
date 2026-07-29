@@ -2,19 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased (2026-07-27)
+## [v0.4.0](https://github.com/somaz94/network-policy-generator/compare/v0.3.0...v0.4.0) (2026-07-29)
 
 ### Features
 
+- **crd:** enforce spec invariants with CEL validation rules and default spec.mode ([ea1123e](https://github.com/somaz94/network-policy-generator/commit/ea1123e60f8df2853c8f204b3cca78e6e621f347))
 - **ci:** publish Helm chart to GHCR (OCI) alongside gh-pages ([a071ed1](https://github.com/somaz94/network-policy-generator/commit/a071ed1dafb56b15397441d75d8dfd129cbce386))
 
 ### Bug Fixes
 
+- **hack:** update the OCI chart version in docs during a version bump ([05f71fe](https://github.com/somaz94/network-policy-generator/commit/05f71fea993115f1881fc569221f5e00efe1f6e2))
+- **build:** scope CRD generation to ./api so controller-gen stops emitting an empty CRD ([5ed59da](https://github.com/somaz94/network-policy-generator/commit/5ed59da19141b90815799c00b6fd741d938e9dff))
 - warn when bump-version.sh finds no version to replace ([68e7aad](https://github.com/somaz94/network-policy-generator/commit/68e7aad636c21b200d9d87f4276fb0043fd1ecc5))
 - **ci:** use staged tarball for OCI push (gh-pages branch checkout invalidates ./helm/ path) ([322d8c5](https://github.com/somaz94/network-policy-generator/commit/322d8c52767cb7548a1ccb3fa71679a63d96d87a))
 
 ### Documentation
 
+- translate remaining Korean code comments to English ([dcc3417](https://github.com/somaz94/network-policy-generator/commit/dcc34171f3031502d63ff162fce734dc074f3588))
 - remove DCO sign-off instructions ([9e126e9](https://github.com/somaz94/network-policy-generator/commit/9e126e9c0a95d92ad42357f568c2f05d59cbac11))
 - add keyword-rich tagline under title for discovery ([ab6ee81](https://github.com/somaz94/network-policy-generator/commit/ab6ee81ff37a74998d0897bbb304bf8eadb16569))
 - document DCO sign-off requirement in CONTRIBUTING ([3fa92b8](https://github.com/somaz94/network-policy-generator/commit/3fa92b8063e16b838cd2a58b30b61db4bc867617))
@@ -38,6 +42,8 @@ All notable changes to this project will be documented in this file.
 
 ### Chores
 
+- **release:** bump version to v0.4.0 ([f06c0b7](https://github.com/somaz94/network-policy-generator/commit/f06c0b74492cd1fbbec38d3f5aa38f1b53362203))
+- **lint:** use the golangci-lint v2 module path and config schema ([7594eb2](https://github.com/somaz94/network-policy-generator/commit/7594eb2c4768f2fda51fc52b032e1d44afe72409))
 - **deps:** bump actions/setup-go from 6 to 7 (#26) ([#26](https://github.com/somaz94/network-policy-generator/pull/26)) ([a04c794](https://github.com/somaz94/network-policy-generator/commit/a04c7945192892aa39c37d27be3dd253f24642ae))
 - **deps:** bump github.com/prometheus/client_golang (#25) ([#25](https://github.com/somaz94/network-policy-generator/pull/25)) ([12ac154](https://github.com/somaz94/network-policy-generator/commit/12ac1541aaf2e32bb70273239f737786154fa36b))
 - **deps:** bump actions/checkout from 6 to 7 (#24) ([#24](https://github.com/somaz94/network-policy-generator/pull/24)) ([b62c5a7](https://github.com/somaz94/network-policy-generator/commit/b62c5a78824ccef13b3c1c226890adf6f2a6ddfc))
