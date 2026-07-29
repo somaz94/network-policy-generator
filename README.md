@@ -53,7 +53,8 @@ This tool helps security teams and cluster administrators implement network segm
 - **Policy Diff/Audit** — Track policy changes (Created/Updated) in status for audit trails
 - **Event Recording** — Emit Kubernetes Events on policy apply, delete, mode transition, and errors
 - **Prometheus Metrics** — Custom metrics for reconcile count, duration, active generators, and policy operations
-- **Webhook Validation** — Admission webhook for CRD validation (enable with `--enable-webhooks` flag, requires cert-manager)
+- **Schema Validation** — Core spec rules are enforced by the CRD itself (CEL `x-kubernetes-validations`), so they apply on every cluster with no extra setup
+- **Webhook Validation** — Optional admission webhook adding CIDR-format and cross-field checks (enable with `--enable-webhooks` flag, requires cert-manager)
 
 <br/>
 
@@ -62,7 +63,7 @@ This tool helps security teams and cluster administrators implement network segm
 <br/>
 
 ### Prerequisites
-- Kubernetes v1.16+
+- Kubernetes v1.25+ (the CRD ships CEL validation rules, which require `x-kubernetes-validations`)
 - kubectl v1.11.3+
 - For Cilium policies: Cilium CNI installed on the cluster
 - For Calico policies: Calico CNI installed on the cluster
@@ -155,7 +156,7 @@ kubectl get networkpolicy -A
 Available sample configurations:
 - `security_v1_networkpolicygenerator-allow.yaml`: Allow-based policy example
 - `security_v1_networkpolicygenerator-deny.yaml`: Deny-based policy example
-- `security_v1_networkpolicygenerator.yaml`: Learning mode example
+- `security_v1_networkpolicygenerator.yaml`: Combined deny-policy example (enforcing mode, global rules)
 - `security_v1_networkpolicygenerator-pod-selector.yaml`: Pod label selector example
 - `security_v1_networkpolicygenerator-cidr-rules.yaml`: CIDR-based egress/ingress rules
 - `security_v1_networkpolicygenerator-named-port.yaml`: Named port (`http`, `grpc`) example
@@ -501,6 +502,23 @@ kubectl describe networkpolicygenerator <name>
 # Check the status and observed traffic (in learning mode)
 kubectl get networkpolicygenerator <name> -o yaml
 ```
+
+<br/>
+
+## Validation Rules
+
+The CRD enforces the following rules at admission time. They are part of the CRD schema (CEL `x-kubernetes-validations`), so they apply even when the optional webhook is disabled — an invalid resource is rejected by `kubectl apply` rather than failing later during reconciliation.
+
+| Rule | Message |
+|---|---|
+| `spec.mode` defaults to `learning` when omitted | — |
+| `spec.duration` must be positive when `spec.mode` is `learning` | `spec.duration is required and must be positive when mode is 'learning'` |
+| Each `spec.globalRules[*]` sets exactly one of `port` or `namedPort` | `exactly one of port or namedPort must be specified` |
+| A namespace may not appear in both `allowedNamespaces` and `deniedNamespaces` | `a namespace cannot be listed in both allowedNamespaces and deniedNamespaces` |
+
+A zero `duration` in learning mode is rejected because the generator would transition straight to enforcing on the next reconcile, applying policies before any traffic was observed.
+
+Enabling the webhook (`--enable-webhooks`) adds checks that the CRD schema cannot express, most notably CIDR-format validation for `spec.cidrRules`.
 
 <br/>
 

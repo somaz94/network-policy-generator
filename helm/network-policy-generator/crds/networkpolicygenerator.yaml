@@ -76,6 +76,7 @@ spec:
                   - cidr
                   - direction
                   type: object
+                maxItems: 256
                 type: array
               dryRun:
                 description: |-
@@ -83,8 +84,10 @@ spec:
                   Generated policies are stored in status.generatedPolicies
                 type: boolean
               duration:
-                description: Duration specifies how long to analyze traffic in learning
-                  mode
+                description: |-
+                  Duration specifies how long to analyze traffic in learning mode.
+                  Required and must be positive when mode is "learning"; a zero duration
+                  would transition straight to enforcing on the next reconcile.
                 type: string
               globalRules:
                 description: GlobalRules defines the global traffic rules
@@ -125,9 +128,17 @@ spec:
                   - protocol
                   - type
                   type: object
+                  x-kubernetes-validations:
+                  - message: exactly one of port or namedPort must be specified
+                    rule: has(self.port) != has(self.namedPort)
+                maxItems: 256
                 type: array
               mode:
-                description: 'Mode specifies the operation mode: "learning" or "enforcing"'
+                default: learning
+                description: |-
+                  Mode specifies the operation mode: "learning" or "enforcing".
+                  Defaults to "learning" so an omitted mode observes traffic instead of
+                  immediately enforcing generated policies.
                 enum:
                 - learning
                 - enforcing
@@ -136,16 +147,22 @@ spec:
                 description: Policy defines the main policy configuration
                 properties:
                   allowedNamespaces:
-                    description: AllowedNamespaces lists namespaces that are allowed
-                      when policy type is deny
+                    description: |-
+                      AllowedNamespaces lists namespaces that are allowed when policy type is deny.
+                      Bounds keep the overlap validation rule inside the apiserver CEL cost budget;
+                      63 is the DNS-1123 label limit for a namespace name.
                     items:
+                      maxLength: 63
                       type: string
+                    maxItems: 128
                     type: array
                   deniedNamespaces:
                     description: DeniedNamespaces lists namespaces that are denied
-                      when policy type is allow
+                      when policy type is allow.
                     items:
+                      maxLength: 63
                       type: string
+                    maxItems: 128
                     type: array
                   podSelector:
                     additionalProperties:
@@ -163,6 +180,11 @@ spec:
                 required:
                 - type
                 type: object
+                x-kubernetes-validations:
+                - message: a namespace cannot be listed in both allowedNamespaces
+                    and deniedNamespaces
+                  rule: '!has(self.allowedNamespaces) || !has(self.deniedNamespaces)
+                    || !self.allowedNamespaces.exists(n, n in self.deniedNamespaces)'
               policyEngine:
                 default: kubernetes
                 description: |-
@@ -190,6 +212,11 @@ spec:
             required:
             - policy
             type: object
+            x-kubernetes-validations:
+            - message: spec.duration is required and must be positive when mode is
+                'learning'
+              rule: self.mode != 'learning' || (has(self.duration) && duration(self.duration)
+                > duration('0s'))
           status:
             description: NetworkPolicyGeneratorStatus defines the observed state of
               NetworkPolicyGenerator

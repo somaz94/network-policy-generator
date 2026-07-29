@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
-- Kubernetes 1.16+
+- Kubernetes 1.25+ (the CRD ships CEL validation rules)
 - Helm 3.0+
 - For Cilium policies: Cilium CNI installed on the cluster
 - For Calico policies: Calico CNI installed on the cluster

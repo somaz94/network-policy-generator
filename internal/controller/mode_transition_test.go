@@ -97,6 +97,9 @@ var _ = Describe("Mode Transition Tests", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode: "learning",
+					// Learning mode requires a positive duration; a long one keeps the
+					// controller from auto-transitioning before the explicit update below.
+					Duration: metav1.Duration{Duration: time.Hour},
 					Policy: securityv1.PolicyConfig{
 						Type: "deny",
 					},

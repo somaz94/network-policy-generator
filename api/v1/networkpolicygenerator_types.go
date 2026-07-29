@@ -21,12 +21,20 @@ import (
 )
 
 // NetworkPolicyGeneratorSpec defines the desired state of NetworkPolicyGenerator
+// +kubebuilder:validation:XValidation:rule="self.mode != 'learning' || (has(self.duration) && duration(self.duration) > duration('0s'))",message="spec.duration is required and must be positive when mode is 'learning'"
 type NetworkPolicyGeneratorSpec struct {
-	// Mode specifies the operation mode: "learning" or "enforcing"
+	// Mode specifies the operation mode: "learning" or "enforcing".
+	// Defaults to "learning" so an omitted mode observes traffic instead of
+	// immediately enforcing generated policies.
 	// +kubebuilder:validation:Enum=learning;enforcing
+	// +kubebuilder:default=learning
+	// +optional
 	Mode string `json:"mode,omitempty"`
 
-	// Duration specifies how long to analyze traffic in learning mode
+	// Duration specifies how long to analyze traffic in learning mode.
+	// Required and must be positive when mode is "learning"; a zero duration
+	// would transition straight to enforcing on the next reconcile.
+	// +optional
 	Duration metav1.Duration `json:"duration,omitempty"`
 
 	// PolicyEngine specifies the CNI-specific policy engine to use
@@ -53,25 +61,34 @@ type NetworkPolicyGeneratorSpec struct {
 	Policy PolicyConfig `json:"policy"`
 
 	// GlobalRules defines the global traffic rules
+	// +kubebuilder:validation:MaxItems=256
 	// +optional
 	GlobalRules []GlobalRule `json:"globalRules,omitempty"`
 
 	// CIDRRules defines CIDR-based traffic rules for external IP ranges
+	// +kubebuilder:validation:MaxItems=256
 	// +optional
 	CIDRRules []CIDRRule `json:"cidrRules,omitempty"`
 }
 
 // PolicyConfig defines the main policy configuration
+// +kubebuilder:validation:XValidation:rule="!has(self.allowedNamespaces) || !has(self.deniedNamespaces) || !self.allowedNamespaces.exists(n, n in self.deniedNamespaces)",message="a namespace cannot be listed in both allowedNamespaces and deniedNamespaces"
 type PolicyConfig struct {
 	// Type defines the policy type (allow/deny)
 	// +kubebuilder:validation:Enum=allow;deny
 	Type string `json:"type"`
 
-	// AllowedNamespaces lists namespaces that are allowed when policy type is deny
+	// AllowedNamespaces lists namespaces that are allowed when policy type is deny.
+	// Bounds keep the overlap validation rule inside the apiserver CEL cost budget;
+	// 63 is the DNS-1123 label limit for a namespace name.
+	// +kubebuilder:validation:MaxItems=128
+	// +kubebuilder:validation:items:MaxLength=63
 	// +optional
 	AllowedNamespaces []string `json:"allowedNamespaces,omitempty"`
 
-	// DeniedNamespaces lists namespaces that are denied when policy type is allow
+	// DeniedNamespaces lists namespaces that are denied when policy type is allow.
+	// +kubebuilder:validation:MaxItems=128
+	// +kubebuilder:validation:items:MaxLength=63
 	// +optional
 	DeniedNamespaces []string `json:"deniedNamespaces,omitempty"`
 
@@ -82,6 +99,7 @@ type PolicyConfig struct {
 }
 
 // GlobalRule defines a single traffic rule
+// +kubebuilder:validation:XValidation:rule="has(self.port) != has(self.namedPort)",message="exactly one of port or namedPort must be specified"
 type GlobalRule struct {
 	// Type defines whether to allow or deny this rule
 	// +kubebuilder:validation:Enum=allow;deny
