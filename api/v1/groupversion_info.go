@@ -29,6 +29,9 @@ var (
 	GroupVersion = schema.GroupVersion{Group: "security.policy.io", Version: "v1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme.
+	// SA1019: scheme.Builder is the kubebuilder scaffold pattern for api
+	// packages and has no drop-in replacement.
+	//nolint:staticcheck
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
 
 	// AddToScheme adds the types in this group-version to the given scheme.

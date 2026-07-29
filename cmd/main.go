@@ -158,6 +158,9 @@ func main() {
 	if err = controller.NewReconciler(
 		mgr.GetClient(),
 		mgr.GetScheme(),
+		// SA1019: GetEventRecorder returns the events.k8s.io/v1 recorder, whose
+		// Eventf signature differs. Migrating the event surface is tracked separately.
+		//nolint:staticcheck
 		mgr.GetEventRecorderFor("network-policy-generator"),
 	).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NetworkPolicyGenerator")

@@ -74,7 +74,7 @@ func (r *NetworkPolicyGeneratorReconciler) Reconcile(ctx context.Context, req ct
 	}
 
 	// Handle deletion
-	if !generator.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !generator.DeletionTimestamp.IsZero() {
 		return r.handleDeletion(ctx, generator)
 	}
 

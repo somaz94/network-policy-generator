@@ -215,7 +215,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 			}, generator)).To(Succeed())
 
 			// Add finalizer
-			generator.ObjectMeta.Finalizers = []string{finalizerName}
+			generator.Finalizers = []string{finalizerName}
 			Expect(k8sClient.Update(ctx, generator)).To(Succeed())
 
 			// Create NetworkPolicy

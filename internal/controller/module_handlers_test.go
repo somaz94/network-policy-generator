@@ -193,7 +193,7 @@ var _ = Describe("Mode Handlers", func() {
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// First call triggers initial setup
-			result, err := reconciler.handleLearningMode(ctx, generator)
+			_, err := reconciler.handleLearningMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(generator.Status.Phase).To(Equal("Learning"))
 
@@ -206,8 +206,11 @@ var _ = Describe("Mode Handlers", func() {
 			generator.Status.LastAnalyzed = metav1.NewTime(time.Now().Add(-5 * time.Second))
 			Expect(k8sClient.Status().Update(ctx, generator)).To(Succeed())
 
-			result, err = reconciler.handleLearningMode(ctx, generator)
+			result, err := reconciler.handleLearningMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
+			// SA1019: learning_handler returns Result{Requeue: true} on transition,
+			// so the assertion must keep reading the deprecated field.
+			//nolint:staticcheck
 			Expect(result.Requeue).To(BeTrue())
 			Expect(generator.Status.Phase).To(Equal("Enforcing"))
 		})
@@ -1201,6 +1204,9 @@ var _ = Describe("Mode Handlers", func() {
 			// Transition should build suggestions
 			result, err := reconciler.handleLearningMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
+			// SA1019: learning_handler returns Result{Requeue: true} on transition,
+			// so the assertion must keep reading the deprecated field.
+			//nolint:staticcheck
 			Expect(result.Requeue).To(BeTrue())
 
 			// Should have suggested namespaces

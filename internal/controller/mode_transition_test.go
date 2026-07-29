@@ -58,7 +58,7 @@ var _ = Describe("Mode Transition Tests", func() {
 
 			// Create the generator
 			Expect(k8sClient.Create(ctx, generator)).Should(Succeed())
-			defer k8sClient.Delete(ctx, generator)
+			defer func() { _ = k8sClient.Delete(ctx, generator) }()
 
 			// Update status
 			createdGenerator := &securityv1.NetworkPolicyGenerator{}
@@ -108,7 +108,7 @@ var _ = Describe("Mode Transition Tests", func() {
 
 			// Create initial generator
 			Expect(k8sClient.Create(ctx, generator)).Should(Succeed())
-			defer k8sClient.Delete(ctx, generator)
+			defer func() { _ = k8sClient.Delete(ctx, generator) }()
 
 			// Update mode to enforcing
 			updatedGenerator := &securityv1.NetworkPolicyGenerator{}
