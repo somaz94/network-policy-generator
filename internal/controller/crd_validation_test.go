@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
+	"github.com/somaz94/network-policy-generator/internal/policy"
 )
 
 // These specs exercise the CRD schema itself (defaults and CEL
@@ -47,7 +48,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 		return &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				Mode:   "enforcing",
+				Mode:   policy.ModeEnforcing,
 				Policy: securityv1.PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns-a"}},
 			},
 		}
@@ -60,7 +61,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 			gen.Spec.Duration = metav1.Duration{Duration: time.Minute}
 
 			Expect(k8sClient.Create(ctx, gen)).To(Succeed())
-			Expect(gen.Spec.Mode).To(Equal("learning"),
+			Expect(gen.Spec.Mode).To(Equal(policy.ModeLearning),
 				"an omitted mode must default instead of failing every reconcile with 'invalid mode'")
 		})
 
@@ -77,7 +78,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 	Context("learning mode requires a positive duration", func() {
 		It("rejects learning mode with a zero duration", func() {
 			gen := newGenerator("learning-no-duration")
-			gen.Spec.Mode = "learning"
+			gen.Spec.Mode = policy.ModeLearning
 
 			err := k8sClient.Create(ctx, gen)
 			Expect(err).To(HaveOccurred())
@@ -87,7 +88,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 
 		It("accepts learning mode with a positive duration", func() {
 			gen := newGenerator("learning-with-duration")
-			gen.Spec.Mode = "learning"
+			gen.Spec.Mode = policy.ModeLearning
 			gen.Spec.Duration = metav1.Duration{Duration: 30 * time.Second}
 
 			Expect(k8sClient.Create(ctx, gen)).To(Succeed())
@@ -178,7 +179,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 			Eventually(func(g Gomega) {
 				latest := &securityv1.NetworkPolicyGenerator{}
 				g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(gen), latest)).To(Succeed())
-				latest.Spec.Mode = "learning"
+				latest.Spec.Mode = policy.ModeLearning
 				latest.Spec.Duration = metav1.Duration{}
 
 				err := k8sClient.Update(ctx, latest)

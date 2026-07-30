@@ -30,7 +30,7 @@ var _ = Describe("Mode Handlers", func() {
 	BeforeEach(func() {
 		var err error
 		ctx = context.Background()
-		generatorName = "test-generator"
+		generatorName = testGeneratorName
 
 		namespace, err = setupTestNamespace(ctx, k8sClient)
 		Expect(err).NotTo(HaveOccurred())
@@ -87,7 +87,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Enforcing Mode", func() {
 		It("should create network policies in enforcing mode", func() {
 			generator := createBasicGenerator(namespace, generatorName)
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			generator.Status.Phase = "Enforcing"
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
@@ -109,7 +109,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should handle policy update in enforcing mode", func() {
 			generator := createBasicGenerator(namespace, generatorName)
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			generator.Status.Phase = "Enforcing"
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
@@ -141,7 +141,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Enforcing Mode with PolicyEngine", func() {
 		It("should default to kubernetes engine when policyEngine is empty", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-k8s")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			generator.Spec.PolicyEngine = ""
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
@@ -152,7 +152,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should use kubernetes engine explicitly", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-k8s-explicit")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			generator.Spec.PolicyEngine = "kubernetes"
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
@@ -163,7 +163,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should reject unsupported policy engine", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-bad-engine")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Set invalid engine directly on the object (bypassing CRD validation)
@@ -233,7 +233,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -306,7 +306,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Kubernetes Enforcing Error Handling", func() {
 		It("should return error when status update fails after applying policies", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-k8s-status-err")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			mockCl := &mockClient{Client: k8sClient, statusUpdateError: fmt.Errorf("enforcing status failed")}
@@ -351,7 +351,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should handle deletion without finalizer", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-no-finalizer")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Delete immediately (no finalizer added yet since no reconcile)
@@ -371,7 +371,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should reconcile enforcing mode end to end", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-e2e-enforcing")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// First reconcile: sets phase, adds finalizer
@@ -412,7 +412,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:     "enforcing",
+					Mode:     policy.ModeEnforcing,
 					Duration: metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
 						Type:             "allow",
@@ -475,7 +475,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Reconcile Add Finalizer Error", func() {
 		It("should return error when adding finalizer fails", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-fin-err")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Mock that fails on Update (adding finalizer)
@@ -502,7 +502,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Apply NetworkPolicy Error", func() {
 		It("should return error when creating policy fails", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-apply-err")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Mock that fails on Create (applyNetworkPolicy)
@@ -522,7 +522,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should return error when Get returns non-not-found error", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-get-err")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Mock that returns a non-not-found error on Get
@@ -544,7 +544,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Reconcile Deletion with Finalizer", func() {
 		It("should clean up policies and remove finalizer on deletion", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-del-fin")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// First reconcile adds finalizer
@@ -577,7 +577,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should return error when delete policies fails during finalizer cleanup", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-del-err")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Add finalizer via reconcile
@@ -617,7 +617,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should return error when removing finalizer fails", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-rm-fin-err")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Add finalizer via reconcile
@@ -659,7 +659,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Reconcile Status Update Error", func() {
 		It("should return error when initial status update fails in Reconcile", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-status-init-err")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			mockCl := &mockClient{Client: k8sClient, statusUpdateError: fmt.Errorf("status init failed")}
@@ -685,7 +685,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Kubernetes Dry Run Mode", func() {
 		It("should store generated policies in status without applying", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-k8s-dryrun")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			generator.Spec.DryRun = true
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
@@ -711,7 +711,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should return error when status update fails in dry-run", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-k8s-dryrun-err")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			generator.Spec.DryRun = true
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
@@ -738,7 +738,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					DryRun:       true,
 					Duration:     metav1.Duration{Duration: time.Minute},
@@ -769,7 +769,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					DryRun:       true,
 					Duration:     metav1.Duration{Duration: time.Minute},
@@ -799,7 +799,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Policy Diff Tracking", func() {
 		It("should track Created action for new policies", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-diff-create")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			result, err := reconciler.handleEnforcingMode(ctx, generator)
@@ -817,7 +817,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should track Updated action for existing policies", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-diff-update")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// First apply creates the policy
@@ -844,7 +844,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Enforcing with Pod Selector", func() {
 		It("should create policy with pod selector labels", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-podselector")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			generator.Spec.Policy.PodSelector = map[string]string{
 				"app":  "web",
 				"tier": "frontend",
@@ -870,7 +870,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("Enforcing with CIDR Rules", func() {
 		It("should create policy with CIDR-based rules", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-cidr")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			generator.Spec.CIDRRules = []securityv1.CIDRRule{
 				{
 					CIDR:      "10.0.0.0/8",
@@ -928,7 +928,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:     "enforcing",
+					Mode:     policy.ModeEnforcing,
 					Duration: metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
 						Type: "deny",
@@ -985,7 +985,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1009,7 +1009,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1044,7 +1044,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					DryRun:       true,
 					Duration:     metav1.Duration{Duration: time.Minute},
@@ -1075,7 +1075,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1100,7 +1100,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					TemplateName: "web-app",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1128,7 +1128,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should not modify spec when template is empty", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-no-template")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			originalRules := len(generator.Spec.GlobalRules)
@@ -1139,7 +1139,7 @@ var _ = Describe("Mode Handlers", func() {
 
 		It("should not modify spec when template name is invalid", func() {
 			generator := createBasicGenerator(namespace, generatorName+"-bad-template")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Set invalid template name after creation to bypass CRD validation
@@ -1238,7 +1238,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1272,7 +1272,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1308,7 +1308,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1341,7 +1341,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1373,7 +1373,7 @@ var _ = Describe("Mode Handlers", func() {
 		It("should return error for empty/invalid mode hitting default case", func() {
 			// Create a valid generator in the API server
 			generator := createBasicGenerator(namespace, generatorName+"-invalid-mode")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			// Use mock with noopGet: returns empty generator (Mode=""), hitting default switch case
@@ -1437,7 +1437,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1493,7 +1493,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1530,7 +1530,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1565,7 +1565,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1602,7 +1602,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1641,7 +1641,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1695,7 +1695,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "calico",
 					DryRun:       true,
 					Duration:     metav1.Duration{Duration: time.Minute},
@@ -1729,7 +1729,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1766,7 +1766,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1803,7 +1803,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1840,7 +1840,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
@@ -1876,7 +1876,7 @@ var _ = Describe("Mode Handlers", func() {
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:         "enforcing",
+					Mode:         policy.ModeEnforcing,
 					PolicyEngine: "cilium",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{

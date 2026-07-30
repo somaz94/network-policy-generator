@@ -17,7 +17,7 @@ import (
 var _ = Describe("Mode Transition Tests", func() {
 	var (
 		key = types.NamespacedName{
-			Name:      "test-generator",
+			Name:      testGeneratorName,
 			Namespace: "default",
 		}
 		reconciler *NetworkPolicyGeneratorReconciler
@@ -44,7 +44,7 @@ var _ = Describe("Mode Transition Tests", func() {
 					Namespace: key.Namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode: "learning",
+					Mode: policy.ModeLearning,
 					Policy: securityv1.PolicyConfig{
 						Type: "deny",
 					},
@@ -85,7 +85,7 @@ var _ = Describe("Mode Transition Tests", func() {
 					return ""
 				}
 				return createdGenerator.Spec.Mode
-			}, timeout, interval).Should(Equal("enforcing"))
+			}, timeout, interval).Should(Equal(policy.ModeEnforcing))
 		})
 
 		It("should handle direct mode changes", func() {
@@ -96,7 +96,7 @@ var _ = Describe("Mode Transition Tests", func() {
 					Namespace: "default",
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode: "learning",
+					Mode: policy.ModeLearning,
 					// Learning mode requires a positive duration; a long one keeps the
 					// controller from auto-transitioning before the explicit update below.
 					Duration: metav1.Duration{Duration: time.Hour},
@@ -117,7 +117,7 @@ var _ = Describe("Mode Transition Tests", func() {
 				Namespace: "default",
 			}, updatedGenerator)).Should(Succeed())
 
-			updatedGenerator.Spec.Mode = "enforcing"
+			updatedGenerator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Update(ctx, updatedGenerator)).Should(Succeed())
 
 			// Verify mode change
@@ -130,7 +130,7 @@ var _ = Describe("Mode Transition Tests", func() {
 					return ""
 				}
 				return updatedGenerator.Spec.Mode
-			}, timeout, interval).Should(Equal("enforcing"))
+			}, timeout, interval).Should(Equal(policy.ModeEnforcing))
 		})
 	})
 })

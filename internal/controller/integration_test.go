@@ -83,11 +83,11 @@ var _ = Describe("NetworkPolicyGenerator Integration", func() {
 			// Create generator with new structure
 			generator = &securityv1.NetworkPolicyGenerator{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-generator",
+					Name:      testGeneratorName,
 					Namespace: namespace,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
-					Mode:     "enforcing",
+					Mode:     policy.ModeEnforcing,
 					Duration: metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
 						Type:              "deny",

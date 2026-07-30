@@ -9,6 +9,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+// Spec enum values accepted by the validating webhook. These mirror the
+// exported constants in internal/policy, which cannot be imported here:
+// internal/policy imports this package, so depending on it would create an
+// import cycle. Keep both sides in sync when an enum value changes.
+const (
+	modeLearning  = "learning"
+	modeEnforcing = "enforcing"
+
+	policyTypeAllow = "allow"
+	policyTypeDeny  = "deny"
+)
+
 // SetupWebhookWithManager sets up the webhook with the Manager.
 func (r *NetworkPolicyGenerator) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, r).
@@ -42,17 +54,17 @@ func validateGenerator(gen *NetworkPolicyGenerator) (admission.Warnings, error) 
 	var warnings admission.Warnings
 
 	// Validate mode
-	if gen.Spec.Mode != "learning" && gen.Spec.Mode != "enforcing" {
+	if gen.Spec.Mode != modeLearning && gen.Spec.Mode != modeEnforcing {
 		return nil, fmt.Errorf("spec.mode must be 'learning' or 'enforcing', got %q", gen.Spec.Mode)
 	}
 
 	// Validate learning mode requires duration
-	if gen.Spec.Mode == "learning" && gen.Spec.Duration.Duration <= 0 {
+	if gen.Spec.Mode == modeLearning && gen.Spec.Duration.Duration <= 0 {
 		return nil, fmt.Errorf("spec.duration is required and must be positive when mode is 'learning'")
 	}
 
 	// Validate policy type
-	if gen.Spec.Policy.Type != "allow" && gen.Spec.Policy.Type != "deny" {
+	if gen.Spec.Policy.Type != policyTypeAllow && gen.Spec.Policy.Type != policyTypeDeny {
 		return nil, fmt.Errorf("spec.policy.type must be 'allow' or 'deny', got %q", gen.Spec.Policy.Type)
 	}
 
@@ -62,7 +74,7 @@ func validateGenerator(gen *NetworkPolicyGenerator) (admission.Warnings, error) 
 	}
 
 	// Validate namespace overlap
-	if gen.Spec.Policy.Type == "deny" {
+	if gen.Spec.Policy.Type == policyTypeDeny {
 		deniedSet := make(map[string]bool)
 		for _, ns := range gen.Spec.Policy.DeniedNamespaces {
 			deniedSet[ns] = true
@@ -75,12 +87,12 @@ func validateGenerator(gen *NetworkPolicyGenerator) (admission.Warnings, error) 
 	}
 
 	// Validate deny-type has allowedNamespaces
-	if gen.Spec.Policy.Type == "deny" && len(gen.Spec.Policy.AllowedNamespaces) == 0 {
+	if gen.Spec.Policy.Type == policyTypeDeny && len(gen.Spec.Policy.AllowedNamespaces) == 0 {
 		warnings = append(warnings, "spec.policy.type is 'deny' but no allowedNamespaces specified")
 	}
 
 	// Validate allow-type has deniedNamespaces
-	if gen.Spec.Policy.Type == "allow" && len(gen.Spec.Policy.DeniedNamespaces) == 0 {
+	if gen.Spec.Policy.Type == policyTypeAllow && len(gen.Spec.Policy.DeniedNamespaces) == 0 {
 		warnings = append(warnings, "spec.policy.type is 'allow' but no deniedNamespaces specified")
 	}
 

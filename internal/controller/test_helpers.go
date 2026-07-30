@@ -26,11 +26,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
+	"github.com/somaz94/network-policy-generator/internal/policy"
 )
 
 const (
 	timeout  = time.Second * 3
 	interval = time.Millisecond * 250
+
+	// testGeneratorName is the default NetworkPolicyGenerator name reused
+	// across the controller test suites.
+	testGeneratorName = "test-generator"
 )
 
 // setupTestNamespace creates a new test namespace
@@ -52,7 +57,7 @@ func createBasicGenerator(namespace, name string) *securityv1.NetworkPolicyGener
 			Namespace: namespace,
 		},
 		Spec: securityv1.NetworkPolicyGeneratorSpec{
-			Mode:     "learning",
+			Mode:     policy.ModeLearning,
 			Duration: metav1.Duration{Duration: time.Minute},
 			Policy: securityv1.PolicyConfig{
 				Type:              "deny",

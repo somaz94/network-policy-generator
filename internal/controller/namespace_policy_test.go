@@ -28,7 +28,7 @@ var _ = Describe("Namespace Policy Tests", func() {
 		BeforeEach(func() {
 			var err error
 			ctx = context.Background()
-			generatorName = "test-generator"
+			generatorName = testGeneratorName
 
 			namespace, err = setupTestNamespace(ctx, k8sClient)
 			Expect(err).NotTo(HaveOccurred())
@@ -63,7 +63,7 @@ var _ = Describe("Namespace Policy Tests", func() {
 				}, generator); err != nil {
 					return err
 				}
-				generator.Spec.Mode = "enforcing"
+				generator.Spec.Mode = policy.ModeEnforcing
 				generator.Spec.Policy.AllowedNamespaces = allowedNamespaces
 				return k8sClient.Update(ctx, generator)
 			}, timeout, interval).Should(Succeed())

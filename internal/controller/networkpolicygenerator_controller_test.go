@@ -45,7 +45,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 		BeforeEach(func() {
 			var err error
 			ctx = context.Background()
-			generatorName = "test-generator"
+			generatorName = testGeneratorName
 
 			// Create test namespace using helper function
 			namespace, err = setupTestNamespace(ctx, k8sClient)
@@ -114,7 +114,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 			Expect(err.Error()).To(ContainSubstring("Unsupported value"))
 
 			// Switch to a valid mode
-			generator.Spec.Mode = "learning"
+			generator.Spec.Mode = policy.ModeLearning
 			generator.Name = generatorName + "-valid"
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 		})
@@ -128,7 +128,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 			}, generator)).To(Succeed())
 
 			By("Setting initial mode to enforcing")
-			generator.Spec.Mode = "enforcing"
+			generator.Spec.Mode = policy.ModeEnforcing
 			Expect(k8sClient.Update(ctx, generator)).To(Succeed())
 
 			reconciler := &NetworkPolicyGeneratorReconciler{
@@ -183,7 +183,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 
 		It("should handle status update errors", func() {
 			generator := createBasicGenerator(namespace, generatorName)
-			generator.Spec.Mode = "learning"
+			generator.Spec.Mode = policy.ModeLearning
 
 			// Mock status update error
 			mockClient := &mockClient{Client: k8sClient}

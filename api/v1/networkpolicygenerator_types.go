@@ -216,11 +216,11 @@ type TrafficFlow struct {
 	Port     int32  `json:"port,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
-//+kubebuilder:printcolumn:name="LastAnalyzed",type="string",JSONPath=".status.lastAnalyzed"
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="LastAnalyzed",type="string",JSONPath=".status.lastAnalyzed"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // NetworkPolicyGenerator is the Schema for the networkpolicygenerators API
 type NetworkPolicyGenerator struct {
@@ -231,7 +231,7 @@ type NetworkPolicyGenerator struct {
 	Status NetworkPolicyGeneratorStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // NetworkPolicyGeneratorList contains a list of NetworkPolicyGenerator
 type NetworkPolicyGeneratorList struct {

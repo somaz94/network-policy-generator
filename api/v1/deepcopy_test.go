@@ -8,6 +8,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// mutatedValue is written into an original object's shared reference fields to
+// prove DeepCopy produced an independent copy: the copy must never observe it.
+const mutatedValue = "changed"
+
 func TestCIDRRule_DeepCopy(t *testing.T) {
 	in := &CIDRRule{
 		CIDR:      "10.0.0.0/8",
@@ -19,8 +23,8 @@ func TestCIDRRule_DeepCopy(t *testing.T) {
 		t.Fatalf("DeepCopy mismatch: got %+v, want %+v", out, in)
 	}
 	// Mutate original's Except slice to verify independence
-	in.Except[0] = "changed"
-	if out.Except[0] == "changed" {
+	in.Except[0] = mutatedValue
+	if out.Except[0] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy Except slice")
 	}
 }
@@ -82,8 +86,8 @@ func TestNetworkPolicyGenerator_DeepCopy(t *testing.T) {
 		t.Fatalf("DeepCopy mismatch")
 	}
 	// Verify independence
-	in.Spec.Policy.AllowedNamespaces[0] = "changed"
-	if out.Spec.Policy.AllowedNamespaces[0] == "changed" {
+	in.Spec.Policy.AllowedNamespaces[0] = mutatedValue
+	if out.Spec.Policy.AllowedNamespaces[0] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy spec")
 	}
 }
@@ -133,8 +137,8 @@ func TestNetworkPolicyGeneratorList_DeepCopy(t *testing.T) {
 		t.Fatal("DeepCopy mismatch")
 	}
 	// Verify independence
-	in.Items[0].Spec.Policy.AllowedNamespaces[0] = "changed"
-	if out.Items[0].Spec.Policy.AllowedNamespaces[0] == "changed" {
+	in.Items[0].Spec.Policy.AllowedNamespaces[0] = mutatedValue
+	if out.Items[0].Spec.Policy.AllowedNamespaces[0] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy items")
 	}
 }
@@ -192,8 +196,8 @@ func TestNetworkPolicyGeneratorSpec_DeepCopy(t *testing.T) {
 	if out.GlobalRules[0].Port == 9999 {
 		t.Fatal("DeepCopy did not deep copy GlobalRules")
 	}
-	in.CIDRRules[0].Except[0] = "changed"
-	if out.CIDRRules[0].Except[0] == "changed" {
+	in.CIDRRules[0].Except[0] = mutatedValue
+	if out.CIDRRules[0].Except[0] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy CIDRRules Except")
 	}
 }
@@ -232,20 +236,20 @@ func TestNetworkPolicyGeneratorStatus_DeepCopy(t *testing.T) {
 	if out.ObservedTraffic[0].Port == 9999 {
 		t.Fatal("DeepCopy did not deep copy ObservedTraffic")
 	}
-	in.SuggestedNamespaces[0] = "changed"
-	if out.SuggestedNamespaces[0] == "changed" {
+	in.SuggestedNamespaces[0] = mutatedValue
+	if out.SuggestedNamespaces[0] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy SuggestedNamespaces")
 	}
 	in.SuggestedRules[0].Port = 1111
 	if out.SuggestedRules[0].Port == 1111 {
 		t.Fatal("DeepCopy did not deep copy SuggestedRules")
 	}
-	in.GeneratedPolicies[0] = "changed"
-	if out.GeneratedPolicies[0] == "changed" {
+	in.GeneratedPolicies[0] = mutatedValue
+	if out.GeneratedPolicies[0] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy GeneratedPolicies")
 	}
-	in.PolicyDiff[0].Action = "changed"
-	if out.PolicyDiff[0].Action == "changed" {
+	in.PolicyDiff[0].Action = mutatedValue
+	if out.PolicyDiff[0].Action == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy PolicyDiff")
 	}
 }
@@ -269,16 +273,16 @@ func TestPolicyConfig_DeepCopy(t *testing.T) {
 		t.Fatal("DeepCopy mismatch")
 	}
 	// Verify independence
-	in.AllowedNamespaces[0] = "changed"
-	if out.AllowedNamespaces[0] == "changed" {
+	in.AllowedNamespaces[0] = mutatedValue
+	if out.AllowedNamespaces[0] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy AllowedNamespaces")
 	}
-	in.DeniedNamespaces[0] = "changed"
-	if out.DeniedNamespaces[0] == "changed" {
+	in.DeniedNamespaces[0] = mutatedValue
+	if out.DeniedNamespaces[0] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy DeniedNamespaces")
 	}
-	in.PodSelector["app"] = "changed"
-	if out.PodSelector["app"] == "changed" {
+	in.PodSelector["app"] = mutatedValue
+	if out.PodSelector["app"] == mutatedValue {
 		t.Fatal("DeepCopy did not deep copy PodSelector")
 	}
 }
