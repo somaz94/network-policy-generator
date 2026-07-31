@@ -183,7 +183,7 @@ func (e *CalicoEngine) applyCIDRRules(policies []runtime.Object, cidrRules []sec
 
 // buildCalicoSelector converts a label map to a Calico selector expression
 func buildCalicoSelector(labels map[string]string) string {
-	var parts []string
+	parts := make([]string, 0, len(labels))
 	for k, v := range labels {
 		parts = append(parts, fmt.Sprintf("%s == '%s'", k, v))
 	}

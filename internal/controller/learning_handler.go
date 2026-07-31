@@ -84,7 +84,7 @@ func (r *NetworkPolicyGeneratorReconciler) buildLearningSuggestions(
 			nsSet[flow.DestNamespace] = true
 		}
 	}
-	var suggestedNS []string
+	suggestedNS := make([]string, 0, len(nsSet))
 	for ns := range nsSet {
 		suggestedNS = append(suggestedNS, ns)
 	}
@@ -109,7 +109,7 @@ func (r *NetworkPolicyGeneratorReconciler) buildLearningSuggestions(
 		}
 	}
 
-	var suggestedRules []securityv1.SuggestedRule
+	suggestedRules := make([]securityv1.SuggestedRule, 0, len(ruleCounts))
 	for key, count := range ruleCounts {
 		suggestedRules = append(suggestedRules, securityv1.SuggestedRule{
 			Port:      key.Port,
