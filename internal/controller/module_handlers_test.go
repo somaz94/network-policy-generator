@@ -1134,7 +1134,7 @@ var _ = Describe("Mode Handlers", func() {
 			originalRules := len(generator.Spec.GlobalRules)
 			_, err := reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(generator.Spec.GlobalRules)).To(Equal(originalRules))
+			Expect(generator.Spec.GlobalRules).To(HaveLen(originalRules))
 		})
 
 		It("should not modify spec when template name is invalid", func() {
