@@ -71,7 +71,7 @@ var _ = Describe("NetworkPolicyGenerator Integration", func() {
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 80,
-									Protocol:      "TCP",
+									Protocol:      policy.ProtocolTCP,
 								},
 							},
 						},
@@ -90,20 +90,20 @@ var _ = Describe("NetworkPolicyGenerator Integration", func() {
 					Mode:     policy.ModeEnforcing,
 					Duration: metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
+						Type:              policy.PolicyTypeDeny,
 						AllowedNamespaces: []string{targetNs},
 					},
 					GlobalRules: []securityv1.GlobalRule{
 						{
-							Type:      "allow",
+							Type:      policy.PolicyTypeAllow,
 							Port:      80,
-							Protocol:  "TCP",
-							Direction: "ingress",
+							Protocol:  policy.ProtocolTCP,
+							Direction: policy.DirectionIngress,
 						},
 					},
 				},
 				Status: securityv1.NetworkPolicyGeneratorStatus{
-					Phase:        "Enforcing",
+					Phase:        policy.PhaseEnforcing,
 					LastAnalyzed: metav1.Now(),
 				},
 			}

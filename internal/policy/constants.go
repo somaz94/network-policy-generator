@@ -19,6 +19,11 @@ const (
 	DirectionIngress = "ingress"
 	DirectionEgress  = "egress"
 
+	// Protocols accepted in rule definitions
+	ProtocolTCP  = "TCP"
+	ProtocolUDP  = "UDP"
+	ProtocolSCTP = "SCTP"
+
 	// Label keys
 	LabelK8sNamespace     = "kubernetes.io/metadata.name"
 	LabelCiliumPodNS      = "k8s:io.kubernetes.pod.namespace"

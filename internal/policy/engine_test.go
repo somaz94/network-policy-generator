@@ -24,15 +24,15 @@ func TestNewPolicyEngine(t *testing.T) {
 	})
 
 	t.Run("Cilium engine", func(t *testing.T) {
-		engine, err := NewPolicyEngine("cilium")
+		engine, err := NewPolicyEngine(EngineCilium)
 		require.NoError(t, err)
-		assert.Equal(t, "cilium", engine.EngineName())
+		assert.Equal(t, EngineCilium, engine.EngineName())
 	})
 
 	t.Run("Calico engine", func(t *testing.T) {
-		engine, err := NewPolicyEngine("calico")
+		engine, err := NewPolicyEngine(EngineCalico)
 		require.NoError(t, err)
-		assert.Equal(t, "calico", engine.EngineName())
+		assert.Equal(t, EngineCalico, engine.EngineName())
 	})
 
 	t.Run("Unsupported engine", func(t *testing.T) {
@@ -53,12 +53,12 @@ func TestKubernetesEngineInterface(t *testing.T) {
 	t.Run("GeneratePolicies returns runtime.Object slice", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nameTest,
+				Namespace: nsDefault,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 			},
 		}
@@ -76,13 +76,13 @@ func TestCiliumEngineInterface(t *testing.T) {
 	t.Run("GeneratePolicies returns runtime.Object slice", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test",
-				Namespace: "default",
+				Name:      nameTest,
+				Namespace: nsDefault,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type:              "deny",
-					AllowedNamespaces: []string{"ns1"},
+					Type:              PolicyTypeDeny,
+					AllowedNamespaces: []string{nsOne},
 				},
 			},
 		}

@@ -14,9 +14,9 @@ const mutatedValue = "changed"
 
 func TestCIDRRule_DeepCopy(t *testing.T) {
 	in := &CIDRRule{
-		CIDR:      "10.0.0.0/8",
-		Except:    []string{"10.1.0.0/16", "10.2.0.0/16"},
-		Direction: "egress",
+		CIDR:      cidr10Slash8,
+		Except:    []string{cidr10Slash16, "10.2.0.0/16"},
+		Direction: directionEgress,
 	}
 	out := in.DeepCopy()
 	if !reflect.DeepEqual(in, out) {
@@ -37,7 +37,7 @@ func TestCIDRRule_DeepCopy_Nil(t *testing.T) {
 }
 
 func TestCIDRRule_DeepCopy_NoExcept(t *testing.T) {
-	in := &CIDRRule{CIDR: "10.0.0.0/8", Direction: "ingress"}
+	in := &CIDRRule{CIDR: cidr10Slash8, Direction: directionIngress}
 	out := in.DeepCopy()
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("DeepCopy mismatch: got %+v, want %+v", out, in)
@@ -48,7 +48,7 @@ func TestCIDRRule_DeepCopy_NoExcept(t *testing.T) {
 }
 
 func TestGlobalRule_DeepCopy(t *testing.T) {
-	in := &GlobalRule{Type: "allow", Port: 80, Protocol: "TCP", Direction: "ingress"}
+	in := &GlobalRule{Type: policyTypeAllow, Port: 80, Protocol: protocolTCP, Direction: directionIngress}
 	out := in.DeepCopy()
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("DeepCopy mismatch: got %+v, want %+v", out, in)
@@ -64,15 +64,15 @@ func TestGlobalRule_DeepCopy_Nil(t *testing.T) {
 
 func TestNetworkPolicyGenerator_DeepCopy(t *testing.T) {
 	in := &NetworkPolicyGenerator{
-		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: nsDefault},
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 			GlobalRules: []GlobalRule{
-				{Type: "allow", Port: 443, Protocol: "TCP", Direction: "ingress"},
+				{Type: policyTypeAllow, Port: 443, Protocol: protocolTCP, Direction: directionIngress},
 			},
 			CIDRRules: []CIDRRule{
-				{CIDR: "10.0.0.0/8", Except: []string{"10.1.0.0/16"}, Direction: "egress"},
+				{CIDR: cidr10Slash8, Except: []string{cidr10Slash16}, Direction: directionEgress},
 			},
 		},
 		Status: NetworkPolicyGeneratorStatus{
@@ -103,8 +103,8 @@ func TestNetworkPolicyGenerator_DeepCopyObject(t *testing.T) {
 	in := &NetworkPolicyGenerator{
 		ObjectMeta: metav1.ObjectMeta{Name: "test"},
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	obj := in.DeepCopyObject()
@@ -126,8 +126,8 @@ func TestNetworkPolicyGeneratorList_DeepCopy(t *testing.T) {
 			{
 				ObjectMeta: metav1.ObjectMeta{Name: "item1"},
 				Spec: NetworkPolicyGeneratorSpec{
-					Mode:   "enforcing",
-					Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+					Mode:   modeEnforcing,
+					Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 				},
 			},
 		},
@@ -171,20 +171,20 @@ func TestNetworkPolicyGeneratorList_DeepCopyObject(t *testing.T) {
 
 func TestNetworkPolicyGeneratorSpec_DeepCopy(t *testing.T) {
 	in := &NetworkPolicyGeneratorSpec{
-		Mode:     "enforcing",
+		Mode:     modeEnforcing,
 		Duration: metav1.Duration{Duration: 5 * time.Minute},
 		Policy: PolicyConfig{
-			Type:              "deny",
-			AllowedNamespaces: []string{"ns1", "ns2"},
+			Type:              policyTypeDeny,
+			AllowedNamespaces: []string{nsOne, nsTwo},
 			DeniedNamespaces:  []string{"ns3"},
 			PodSelector:       map[string]string{"app": "web"},
 		},
 		GlobalRules: []GlobalRule{
-			{Type: "allow", Port: 80, Protocol: "TCP", Direction: "ingress"},
-			{Type: "deny", NamedPort: "grpc", Protocol: "TCP", Direction: "egress"},
+			{Type: policyTypeAllow, Port: 80, Protocol: protocolTCP, Direction: directionIngress},
+			{Type: policyTypeDeny, NamedPort: "grpc", Protocol: protocolTCP, Direction: directionEgress},
 		},
 		CIDRRules: []CIDRRule{
-			{CIDR: "10.0.0.0/8", Except: []string{"10.1.0.0/16"}, Direction: "egress"},
+			{CIDR: cidr10Slash8, Except: []string{cidr10Slash16}, Direction: directionEgress},
 		},
 	}
 	out := in.DeepCopy()
@@ -215,15 +215,15 @@ func TestNetworkPolicyGeneratorStatus_DeepCopy(t *testing.T) {
 		Phase:        "Learning",
 		LastAnalyzed: now,
 		ObservedTraffic: []TrafficFlow{
-			{SourceNamespace: "a", DestNamespace: "b", Port: 80, Protocol: "TCP"},
+			{SourceNamespace: "a", DestNamespace: "b", Port: 80, Protocol: protocolTCP},
 		},
-		SuggestedNamespaces: []string{"ns1", "ns2"},
+		SuggestedNamespaces: []string{nsOne, nsTwo},
 		SuggestedRules: []SuggestedRule{
-			{Port: 443, Protocol: "TCP", Direction: "ingress", Count: 5},
+			{Port: 443, Protocol: protocolTCP, Direction: directionIngress, Count: 5},
 		},
 		GeneratedPolicies: []string{"policy-yaml-1", "policy-yaml-2"},
 		PolicyDiff: []PolicyDiffEntry{
-			{PolicyName: "pol1", Namespace: "default", Action: "Created", Timestamp: now},
+			{PolicyName: "pol1", Namespace: nsDefault, Action: "Created", Timestamp: now},
 		},
 		AppliedPoliciesCount: 3,
 	}
@@ -263,8 +263,8 @@ func TestNetworkPolicyGeneratorStatus_DeepCopy_Nil(t *testing.T) {
 
 func TestPolicyConfig_DeepCopy(t *testing.T) {
 	in := &PolicyConfig{
-		Type:              "deny",
-		AllowedNamespaces: []string{"ns1", "ns2"},
+		Type:              policyTypeDeny,
+		AllowedNamespaces: []string{nsOne, nsTwo},
 		DeniedNamespaces:  []string{"ns3"},
 		PodSelector:       map[string]string{"app": "web", "tier": "frontend"},
 	}
@@ -298,7 +298,7 @@ func TestPolicyDiffEntry_DeepCopy(t *testing.T) {
 	now := metav1.Now()
 	in := &PolicyDiffEntry{
 		PolicyName: "pol1",
-		Namespace:  "default",
+		Namespace:  nsDefault,
 		Action:     "Created",
 		Timestamp:  now,
 	}
@@ -316,7 +316,7 @@ func TestPolicyDiffEntry_DeepCopy_Nil(t *testing.T) {
 }
 
 func TestSuggestedRule_DeepCopy(t *testing.T) {
-	in := &SuggestedRule{Port: 443, Protocol: "TCP", Direction: "ingress", Count: 10}
+	in := &SuggestedRule{Port: 443, Protocol: protocolTCP, Direction: directionIngress, Count: 10}
 	out := in.DeepCopy()
 	if !reflect.DeepEqual(in, out) {
 		t.Fatal("DeepCopy mismatch")
@@ -336,7 +336,7 @@ func TestTrafficFlow_DeepCopy(t *testing.T) {
 		SourcePod:       "src-pod",
 		DestNamespace:   "dst-ns",
 		DestPod:         "dst-pod",
-		Protocol:        "TCP",
+		Protocol:        protocolTCP,
 		Port:            8080,
 	}
 	out := in.DeepCopy()

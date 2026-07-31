@@ -59,7 +59,7 @@ func TestListTemplateNames(t *testing.T) {
 func TestTemplateApply(t *testing.T) {
 	t.Run("zero-trust sets deny type", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGeneratorSpec{
-			Policy: securityv1.PolicyConfig{Type: "allow"},
+			Policy: securityv1.PolicyConfig{Type: PolicyTypeAllow},
 		}
 		tmpl := GetTemplate(TemplateZeroTrust)
 		tmpl.Apply(spec)
@@ -146,26 +146,26 @@ func TestTemplateApply(t *testing.T) {
 func TestMergeGlobalRules(t *testing.T) {
 	t.Run("user rules take precedence", func(t *testing.T) {
 		userRules := []securityv1.GlobalRule{
-			{Type: "deny", Port: 80, Protocol: "TCP", Direction: DirectionIngress},
+			{Type: PolicyTypeDeny, Port: 80, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 		templateRules := []securityv1.GlobalRule{
-			{Type: "allow", Port: 80, Protocol: "TCP", Direction: DirectionIngress},
-			{Type: "allow", Port: 443, Protocol: "TCP", Direction: DirectionIngress},
+			{Type: PolicyTypeAllow, Port: 80, Protocol: ProtocolTCP, Direction: DirectionIngress},
+			{Type: PolicyTypeAllow, Port: 443, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 
 		result := mergeGlobalRules(userRules, templateRules...)
 
 		// User's deny rule for port 80 should win over template's allow
 		require.Len(t, result, 2) // port 80 (user) + port 443 (template)
-		assert.Equal(t, "deny", result[0].Type)
+		assert.Equal(t, PolicyTypeDeny, result[0].Type)
 		assert.Equal(t, int32(80), result[0].Port)
 		assert.Equal(t, int32(443), result[1].Port)
 	})
 
 	t.Run("empty user rules uses all template rules", func(t *testing.T) {
 		templateRules := []securityv1.GlobalRule{
-			{Type: "allow", Port: 80, Protocol: "TCP", Direction: DirectionIngress},
-			{Type: "allow", Port: 443, Protocol: "TCP", Direction: DirectionEgress},
+			{Type: PolicyTypeAllow, Port: 80, Protocol: ProtocolTCP, Direction: DirectionIngress},
+			{Type: PolicyTypeAllow, Port: 443, Protocol: ProtocolTCP, Direction: DirectionEgress},
 		}
 
 		result := mergeGlobalRules(nil, templateRules...)
@@ -174,7 +174,7 @@ func TestMergeGlobalRules(t *testing.T) {
 
 	t.Run("no template rules keeps user rules", func(t *testing.T) {
 		userRules := []securityv1.GlobalRule{
-			{Type: "allow", Port: 8080, Protocol: "TCP", Direction: DirectionIngress},
+			{Type: PolicyTypeAllow, Port: 8080, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 
 		result := mergeGlobalRules(userRules)
@@ -184,10 +184,10 @@ func TestMergeGlobalRules(t *testing.T) {
 
 	t.Run("named port dedup", func(t *testing.T) {
 		userRules := []securityv1.GlobalRule{
-			{Type: "allow", NamedPort: "http", Protocol: "TCP", Direction: DirectionIngress},
+			{Type: PolicyTypeAllow, NamedPort: namedPortHTTP, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 		templateRules := []securityv1.GlobalRule{
-			{Type: "allow", NamedPort: "http", Protocol: "TCP", Direction: DirectionIngress},
+			{Type: PolicyTypeAllow, NamedPort: namedPortHTTP, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 
 		result := mergeGlobalRules(userRules, templateRules...)
@@ -198,7 +198,7 @@ func TestMergeGlobalRules(t *testing.T) {
 func TestTemplateWithUserRulesPreserved(t *testing.T) {
 	spec := &securityv1.NetworkPolicyGeneratorSpec{
 		GlobalRules: []securityv1.GlobalRule{
-			{Type: "allow", Port: 9999, Protocol: "TCP", Direction: DirectionIngress},
+			{Type: PolicyTypeAllow, Port: 9999, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		},
 	}
 
@@ -226,9 +226,9 @@ func TestGlobalRuleKeyDistinguishesPorts(t *testing.T) {
 	seen := make(map[string]int32, len(ports))
 	for _, port := range ports {
 		key := globalRuleKey(securityv1.GlobalRule{
-			Type:      "allow",
+			Type:      PolicyTypeAllow,
 			Port:      port,
-			Protocol:  "TCP",
+			Protocol:  ProtocolTCP,
 			Direction: DirectionIngress,
 		})
 		prev, dup := seen[key]

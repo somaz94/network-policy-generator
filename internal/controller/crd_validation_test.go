@@ -49,7 +49,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Mode:   policy.ModeEnforcing,
-				Policy: securityv1.PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns-a"}},
+				Policy: securityv1.PolicyConfig{Type: policy.PolicyTypeDeny, AllowedNamespaces: []string{nsA}},
 			},
 		}
 	}
@@ -103,7 +103,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 
 	Context("globalRules port vs namedPort", func() {
 		rule := func(mutate func(*securityv1.GlobalRule)) securityv1.GlobalRule {
-			r := securityv1.GlobalRule{Type: "allow", Protocol: "TCP", Direction: "ingress"}
+			r := securityv1.GlobalRule{Type: policy.PolicyTypeAllow, Protocol: policy.ProtocolTCP, Direction: policy.DirectionIngress}
 			mutate(&r)
 			return r
 		}
@@ -111,7 +111,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 		It("rejects a rule specifying both port and namedPort", func() {
 			gen := newGenerator("rule-both-ports")
 			gen.Spec.GlobalRules = []securityv1.GlobalRule{
-				rule(func(r *securityv1.GlobalRule) { r.Port = 80; r.NamedPort = "http" }),
+				rule(func(r *securityv1.GlobalRule) { r.Port = 80; r.NamedPort = namedPortHTTP }),
 			}
 
 			err := k8sClient.Create(ctx, gen)
@@ -150,7 +150,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 	Context("policy namespace overlap", func() {
 		It("rejects a namespace listed as both allowed and denied", func() {
 			gen := newGenerator("ns-overlap")
-			gen.Spec.Policy.AllowedNamespaces = []string{"ns-a", "shared"}
+			gen.Spec.Policy.AllowedNamespaces = []string{nsA, "shared"}
 			gen.Spec.Policy.DeniedNamespaces = []string{"shared", "ns-b"}
 
 			err := k8sClient.Create(ctx, gen)
@@ -160,7 +160,7 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 
 		It("accepts disjoint allowed and denied namespace lists", func() {
 			gen := newGenerator("ns-disjoint")
-			gen.Spec.Policy.AllowedNamespaces = []string{"ns-a"}
+			gen.Spec.Policy.AllowedNamespaces = []string{nsA}
 			gen.Spec.Policy.DeniedNamespaces = []string{"ns-b"}
 
 			Expect(k8sClient.Create(ctx, gen)).To(Succeed())

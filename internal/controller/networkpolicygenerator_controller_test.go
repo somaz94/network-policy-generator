@@ -92,7 +92,7 @@ var _ = Describe("NetworkPolicyGenerator Controller", func() {
 					return ""
 				}
 				return generator.Status.Phase
-			}, timeout, interval).Should(Equal("Learning"))
+			}, timeout, interval).Should(Equal(policy.PhaseLearning))
 
 			By("Verifying NetworkPolicy is not created in learning mode")
 			networkPolicy := &networkingv1.NetworkPolicy{}

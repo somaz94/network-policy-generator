@@ -62,7 +62,7 @@ func TestMonitor(t *testing.T) {
 	// Create test pod
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
+			Name:      nameTestPod,
 			Namespace: testNamespace,
 		},
 		Spec: corev1.PodSpec{
@@ -72,7 +72,7 @@ func TestMonitor(t *testing.T) {
 					Ports: []corev1.ContainerPort{
 						{
 							ContainerPort: 80,
-							Protocol:      "TCP",
+							Protocol:      protocolTCP,
 						},
 					},
 					Env: []corev1.EnvVar{
@@ -104,8 +104,8 @@ func TestMonitor(t *testing.T) {
 		// Add traffic data while monitoring is running
 		monitor.addTrafficFlow(securityv1.TrafficFlow{
 			SourceNamespace: testNamespace,
-			SourcePod:       "test-pod",
-			Protocol:        "TCP",
+			SourcePod:       nameTestPod,
+			Protocol:        protocolTCP,
 			Port:            80,
 		})
 
@@ -125,8 +125,8 @@ func TestMonitor(t *testing.T) {
 		// Add traffic data explicitly
 		monitor.addTrafficFlow(securityv1.TrafficFlow{
 			SourceNamespace: testNamespace,
-			SourcePod:       "test-pod",
-			Protocol:        "TCP",
+			SourcePod:       nameTestPod,
+			Protocol:        protocolTCP,
 			Port:            80,
 		})
 
@@ -137,9 +137,9 @@ func TestMonitor(t *testing.T) {
 		var found bool
 		for _, flow := range traffic {
 			if flow.SourceNamespace == testNamespace &&
-				flow.SourcePod == "test-pod" &&
+				flow.SourcePod == nameTestPod &&
 				flow.Port == 80 &&
-				flow.Protocol == "TCP" {
+				flow.Protocol == protocolTCP {
 				found = true
 				break
 			}
@@ -152,8 +152,8 @@ func TestMonitor(t *testing.T) {
 
 		flow := securityv1.TrafficFlow{
 			SourceNamespace: testNamespace,
-			SourcePod:       "test-pod",
-			Protocol:        "TCP",
+			SourcePod:       nameTestPod,
+			Protocol:        protocolTCP,
 			Port:            80,
 		}
 
@@ -169,7 +169,7 @@ func TestMonitor(t *testing.T) {
 
 		invalidFlow := securityv1.TrafficFlow{
 			// Missing required fields
-			Protocol: "TCP",
+			Protocol: protocolTCP,
 		}
 
 		monitor.addTrafficFlow(invalidFlow)

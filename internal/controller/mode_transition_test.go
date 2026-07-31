@@ -18,7 +18,7 @@ var _ = Describe("Mode Transition Tests", func() {
 	var (
 		key = types.NamespacedName{
 			Name:      testGeneratorName,
-			Namespace: "default",
+			Namespace: nsDefault,
 		}
 		reconciler *NetworkPolicyGeneratorReconciler
 	)
@@ -46,12 +46,12 @@ var _ = Describe("Mode Transition Tests", func() {
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode: policy.ModeLearning,
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 					Duration: metav1.Duration{Duration: time.Second},
 				},
 				Status: securityv1.NetworkPolicyGeneratorStatus{
-					Phase:        "Learning",
+					Phase:        policy.PhaseLearning,
 					LastAnalyzed: metav1.NewTime(startTime),
 				},
 			}
@@ -66,7 +66,7 @@ var _ = Describe("Mode Transition Tests", func() {
 				if err := k8sClient.Get(ctx, key, createdGenerator); err != nil {
 					return err
 				}
-				createdGenerator.Status.Phase = "Learning"
+				createdGenerator.Status.Phase = policy.PhaseLearning
 				createdGenerator.Status.LastAnalyzed = metav1.NewTime(startTime)
 				return k8sClient.Status().Update(ctx, createdGenerator)
 			}, timeout, interval).Should(Succeed())
@@ -92,8 +92,8 @@ var _ = Describe("Mode Transition Tests", func() {
 			ctx := context.Background()
 			generator := &securityv1.NetworkPolicyGenerator{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "mode-change-test",
-					Namespace: "default",
+					Name:      nameModeChangeTest,
+					Namespace: nsDefault,
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode: policy.ModeLearning,
@@ -101,7 +101,7 @@ var _ = Describe("Mode Transition Tests", func() {
 					// controller from auto-transitioning before the explicit update below.
 					Duration: metav1.Duration{Duration: time.Hour},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -113,8 +113,8 @@ var _ = Describe("Mode Transition Tests", func() {
 			// Update mode to enforcing
 			updatedGenerator := &securityv1.NetworkPolicyGenerator{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
-				Name:      "mode-change-test",
-				Namespace: "default",
+				Name:      nameModeChangeTest,
+				Namespace: nsDefault,
 			}, updatedGenerator)).Should(Succeed())
 
 			updatedGenerator.Spec.Mode = policy.ModeEnforcing
@@ -123,8 +123,8 @@ var _ = Describe("Mode Transition Tests", func() {
 			// Verify mode change
 			Eventually(func() string {
 				err := k8sClient.Get(ctx, types.NamespacedName{
-					Name:      "mode-change-test",
-					Namespace: "default",
+					Name:      nameModeChangeTest,
+					Namespace: nsDefault,
 				}, updatedGenerator)
 				if err != nil {
 					return ""

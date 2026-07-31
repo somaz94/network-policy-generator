@@ -19,7 +19,7 @@ func TestCollector(t *testing.T) {
 	t.Run("Collect Pod Traffic", func(t *testing.T) {
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-pod",
+				Name:      nameTestPod,
 				Namespace: testNamespace,
 			},
 			Spec: corev1.PodSpec{
@@ -29,7 +29,7 @@ func TestCollector(t *testing.T) {
 						Ports: []corev1.ContainerPort{
 							{
 								ContainerPort: 80,
-								Protocol:      "TCP",
+								Protocol:      protocolTCP,
 							},
 						},
 					},
@@ -41,7 +41,7 @@ func TestCollector(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, flows)
 		assert.Equal(t, testNamespace, flows[0].SourceNamespace)
-		assert.Equal(t, "test-pod", flows[0].SourcePod)
+		assert.Equal(t, nameTestPod, flows[0].SourcePod)
 		assert.Equal(t, int32(80), flows[0].Port)
 	})
 
@@ -54,19 +54,19 @@ func TestCollector(t *testing.T) {
 		}{
 			{
 				input:        "example.com:8080",
-				expectedHost: "example.com",
+				expectedHost: testHost,
 				expectedPort: 8080,
 				description:  "Valid host and port",
 			},
 			{
-				input:        "example.com",
-				expectedHost: "example.com",
+				input:        testHost,
+				expectedHost: testHost,
 				expectedPort: 80,
 				description:  "Host only, default port",
 			},
 			{
 				input:        "example.com:invalid",
-				expectedHost: "example.com",
+				expectedHost: testHost,
 				expectedPort: 80,
 				description:  "Invalid port, use default",
 			},
@@ -84,7 +84,7 @@ func TestCollector(t *testing.T) {
 	t.Run("Analyze Environment Variables", func(t *testing.T) {
 		pod := &corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-pod",
+				Name:      nameTestPod,
 				Namespace: testNamespace,
 			},
 		}
@@ -154,7 +154,7 @@ func TestCollectTrafficData(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name: "web",
 				Ports: []corev1.ContainerPort{
-					{ContainerPort: 8080, Protocol: "TCP"},
+					{ContainerPort: 8080, Protocol: protocolTCP},
 				},
 				Env: []corev1.EnvVar{
 					{Name: "REDIS_HOST", Value: "redis.cache:6379"},

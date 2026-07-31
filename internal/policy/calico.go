@@ -214,7 +214,7 @@ func calicoGlobalRulePort(rule securityv1.GlobalRule) interface{} {
 func dnsEgressRuleCalico() CalicoRule {
 	return CalicoRule{
 		Action:   CalicoActionAllow,
-		Protocol: "UDP",
+		Protocol: ProtocolUDP,
 		Destination: &CalicoEntityRule{
 			NamespaceSelector: "projectcalico.org/name == 'kube-system'",
 			Selector:          "k8s-app == 'kube-dns'",

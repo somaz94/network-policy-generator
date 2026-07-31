@@ -11,13 +11,13 @@ import (
 func TestValidateGenerator_ValidEnforcing(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode: "enforcing",
+			Mode: modeEnforcing,
 			Policy: PolicyConfig{
-				Type:              "deny",
+				Type:              policyTypeDeny,
 				AllowedNamespaces: []string{"kube-system"},
 			},
 			GlobalRules: []GlobalRule{
-				{Type: "allow", Port: 80, Protocol: "TCP", Direction: "ingress"},
+				{Type: policyTypeAllow, Port: 80, Protocol: protocolTCP, Direction: directionIngress},
 			},
 		},
 	}
@@ -33,10 +33,10 @@ func TestValidateGenerator_ValidEnforcing(t *testing.T) {
 func TestValidateGenerator_ValidLearning(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:     "learning",
+			Mode:     modeLearning,
 			Duration: metav1.Duration{Duration: 5 * time.Minute},
 			Policy: PolicyConfig{
-				Type:              "deny",
+				Type:              policyTypeDeny,
 				AllowedNamespaces: []string{"kube-system"},
 			},
 		},
@@ -53,8 +53,8 @@ func TestValidateGenerator_ValidLearning(t *testing.T) {
 func TestValidateGenerator_InvalidMode(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "invalid",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   valueInvalid,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	_, err := validateGenerator(gen)
@@ -66,8 +66,8 @@ func TestValidateGenerator_InvalidMode(t *testing.T) {
 func TestValidateGenerator_LearningWithoutDuration(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "learning",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeLearning,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	_, err := validateGenerator(gen)
@@ -79,7 +79,7 @@ func TestValidateGenerator_LearningWithoutDuration(t *testing.T) {
 func TestValidateGenerator_InvalidPolicyType(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
+			Mode:   modeEnforcing,
 			Policy: PolicyConfig{Type: "block"},
 		},
 	}
@@ -92,9 +92,9 @@ func TestValidateGenerator_InvalidPolicyType(t *testing.T) {
 func TestValidateGenerator_InvalidEngine(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:         "enforcing",
+			Mode:         modeEnforcing,
 			PolicyEngine: "unknown-engine",
-			Policy:       PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Policy:       PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	_, err := validateGenerator(gen)
@@ -106,11 +106,11 @@ func TestValidateGenerator_InvalidEngine(t *testing.T) {
 func TestValidateGenerator_NamespaceOverlap(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode: "enforcing",
+			Mode: modeEnforcing,
 			Policy: PolicyConfig{
-				Type:              "deny",
-				AllowedNamespaces: []string{"ns1"},
-				DeniedNamespaces:  []string{"ns1"},
+				Type:              policyTypeDeny,
+				AllowedNamespaces: []string{nsOne},
+				DeniedNamespaces:  []string{nsOne},
 			},
 		},
 	}
@@ -123,8 +123,8 @@ func TestValidateGenerator_NamespaceOverlap(t *testing.T) {
 func TestValidateGenerator_DenyWithoutAllowed_Warning(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny"},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny},
 		},
 	}
 	warnings, err := validateGenerator(gen)
@@ -139,8 +139,8 @@ func TestValidateGenerator_DenyWithoutAllowed_Warning(t *testing.T) {
 func TestValidateGenerator_AllowWithoutDenied_Warning(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "allow"},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeAllow},
 		},
 	}
 	warnings, err := validateGenerator(gen)
@@ -155,10 +155,10 @@ func TestValidateGenerator_AllowWithoutDenied_Warning(t *testing.T) {
 func TestValidateGenerator_GlobalRulePortAndNamedPort(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 			GlobalRules: []GlobalRule{
-				{Type: "allow", Port: 80, NamedPort: "http", Protocol: "TCP", Direction: "ingress"},
+				{Type: policyTypeAllow, Port: 80, NamedPort: "http", Protocol: protocolTCP, Direction: directionIngress},
 			},
 		},
 	}
@@ -171,10 +171,10 @@ func TestValidateGenerator_GlobalRulePortAndNamedPort(t *testing.T) {
 func TestValidateGenerator_GlobalRuleNoPort(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 			GlobalRules: []GlobalRule{
-				{Type: "allow", Protocol: "TCP", Direction: "ingress"},
+				{Type: policyTypeAllow, Protocol: protocolTCP, Direction: directionIngress},
 			},
 		},
 	}
@@ -187,10 +187,10 @@ func TestValidateGenerator_GlobalRuleNoPort(t *testing.T) {
 func TestValidateGenerator_InvalidCIDR(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 			CIDRRules: []CIDRRule{
-				{CIDR: "invalid", Direction: "egress"},
+				{CIDR: valueInvalid, Direction: directionEgress},
 			},
 		},
 	}
@@ -203,10 +203,10 @@ func TestValidateGenerator_InvalidCIDR(t *testing.T) {
 func TestValidateGenerator_InvalidCIDRExcept(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 			CIDRRules: []CIDRRule{
-				{CIDR: "10.0.0.0/8", Except: []string{"bad"}, Direction: "egress"},
+				{CIDR: cidr10Slash8, Except: []string{"bad"}, Direction: directionEgress},
 			},
 		},
 	}
@@ -219,10 +219,10 @@ func TestValidateGenerator_InvalidCIDRExcept(t *testing.T) {
 func TestValidateGenerator_InvalidCIDRDirection(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 			CIDRRules: []CIDRRule{
-				{CIDR: "10.0.0.0/8", Direction: "both"},
+				{CIDR: cidr10Slash8, Direction: "both"},
 			},
 		},
 	}
@@ -235,9 +235,9 @@ func TestValidateGenerator_InvalidCIDRDirection(t *testing.T) {
 func TestValidateGenerator_DryRunWarning(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
+			Mode:   modeEnforcing,
 			DryRun: true,
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	warnings, err := validateGenerator(gen)
@@ -258,9 +258,9 @@ func TestValidateGenerator_DryRunWarning(t *testing.T) {
 func TestValidateGenerator_ValidCiliumEngine(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:         "enforcing",
+			Mode:         modeEnforcing,
 			PolicyEngine: "cilium",
-			Policy:       PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Policy:       PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	_, err := validateGenerator(gen)
@@ -272,9 +272,9 @@ func TestValidateGenerator_ValidCiliumEngine(t *testing.T) {
 func TestValidateGenerator_ValidCalicoEngine(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:         "enforcing",
+			Mode:         modeEnforcing,
 			PolicyEngine: "calico",
-			Policy:       PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Policy:       PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	warnings, err := validateGenerator(gen)
@@ -290,8 +290,8 @@ func TestValidatorCreate_Valid(t *testing.T) {
 	v := &networkPolicyGeneratorValidator{}
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	warnings, err := v.ValidateCreate(context.Background(), gen)
@@ -308,7 +308,7 @@ func TestValidatorCreate_Invalid(t *testing.T) {
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
 			Mode:   "bad",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	_, err := v.ValidateCreate(context.Background(), gen)
@@ -321,14 +321,14 @@ func TestValidatorUpdate_Valid(t *testing.T) {
 	v := &networkPolicyGeneratorValidator{}
 	oldGen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	newGen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1", "ns2"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne, nsTwo}},
 		},
 	}
 	warnings, err := v.ValidateUpdate(context.Background(), oldGen, newGen)
@@ -344,14 +344,14 @@ func TestValidatorUpdate_Invalid(t *testing.T) {
 	v := &networkPolicyGeneratorValidator{}
 	oldGen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	newGen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "invalid",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   valueInvalid,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	_, err := v.ValidateUpdate(context.Background(), oldGen, newGen)
@@ -364,8 +364,8 @@ func TestValidatorDelete(t *testing.T) {
 	v := &networkPolicyGeneratorValidator{}
 	gen := &NetworkPolicyGenerator{
 		Spec: NetworkPolicyGeneratorSpec{
-			Mode:   "enforcing",
-			Policy: PolicyConfig{Type: "deny", AllowedNamespaces: []string{"ns1"}},
+			Mode:   modeEnforcing,
+			Policy: PolicyConfig{Type: policyTypeDeny, AllowedNamespaces: []string{nsOne}},
 		},
 	}
 	warnings, err := v.ValidateDelete(context.Background(), gen)

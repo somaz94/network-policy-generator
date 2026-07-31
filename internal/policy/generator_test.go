@@ -17,13 +17,13 @@ func TestGenerator(t *testing.T) {
 	t.Run("Generate Basic NetworkPolicy", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 				UID:       types.UID("test-uid"),
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 			},
 		}
@@ -32,18 +32,18 @@ func TestGenerator(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, policies, 1)
 		assert.Equal(t, "test-policy-generated", policies[0].Name)
-		assert.Equal(t, "test-namespace", policies[0].Namespace)
+		assert.Equal(t, nsTest, policies[0].Namespace)
 	})
 
 	t.Run("Generate Policy with Allow Type and Denied Namespaces", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type:             "allow",
+					Type:             PolicyTypeAllow,
 					DeniedNamespaces: []string{"test-ns1", "test-ns2"},
 				},
 			},
@@ -74,22 +74,22 @@ func TestGenerator(t *testing.T) {
 	t.Run("Generate Policy with Global Rules", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 				GlobalRules: []securityv1.GlobalRule{
 					{
-						Direction: "ingress",
-						Protocol:  "TCP",
+						Direction: DirectionIngress,
+						Protocol:  ProtocolTCP,
 						Port:      80,
 					},
 					{
-						Direction: "egress",
-						Protocol:  "TCP",
+						Direction: DirectionEgress,
+						Protocol:  ProtocolTCP,
 						Port:      443,
 					},
 				},
@@ -109,13 +109,13 @@ func TestGenerator(t *testing.T) {
 	t.Run("Generate Policy with Allowed Namespaces", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type:              "deny",
-					AllowedNamespaces: []string{"allowed-ns1", "allowed-ns2"},
+					Type:              PolicyTypeDeny,
+					AllowedNamespaces: []string{nsAllowed1, nsAllowed2},
 				},
 			},
 		}
@@ -132,15 +132,15 @@ func TestGenerator(t *testing.T) {
 	t.Run("Generate Policy with Pod Selector", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 					PodSelector: map[string]string{
-						"app":  "web",
-						"tier": "frontend",
+						labelApp:  labelValueWeb,
+						labelTier: labelValueFrontend,
 					},
 				},
 			},
@@ -150,19 +150,19 @@ func TestGenerator(t *testing.T) {
 		assert.NoError(t, err)
 		require.Len(t, policies, 1)
 		policy := policies[0]
-		assert.Equal(t, "web", policy.Spec.PodSelector.MatchLabels["app"])
-		assert.Equal(t, "frontend", policy.Spec.PodSelector.MatchLabels["tier"])
+		assert.Equal(t, labelValueWeb, policy.Spec.PodSelector.MatchLabels[labelApp])
+		assert.Equal(t, labelValueFrontend, policy.Spec.PodSelector.MatchLabels[labelTier])
 	})
 
 	t.Run("Generate Policy without Pod Selector defaults to empty", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 			},
 		}
@@ -176,22 +176,22 @@ func TestGenerator(t *testing.T) {
 	t.Run("Generate Policy with CIDR Rules", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 				CIDRRules: []securityv1.CIDRRule{
 					{
-						CIDR:      "10.0.0.0/8",
-						Direction: "egress",
+						CIDR:      cidr10Slash8,
+						Direction: DirectionEgress,
 					},
 					{
-						CIDR:      "192.168.1.0/24",
-						Except:    []string{"192.168.1.100/32"},
-						Direction: "ingress",
+						CIDR:      cidr192Slash24,
+						Except:    []string{cidrHost192},
+						Direction: DirectionIngress,
 					},
 				},
 			},
@@ -204,33 +204,33 @@ func TestGenerator(t *testing.T) {
 
 		// 1 DNS egress + 1 CIDR egress
 		require.Len(t, policy.Spec.Egress, 2)
-		assert.Equal(t, "10.0.0.0/8", policy.Spec.Egress[1].To[0].IPBlock.CIDR)
+		assert.Equal(t, cidr10Slash8, policy.Spec.Egress[1].To[0].IPBlock.CIDR)
 
 		// 1 CIDR ingress
 		require.Len(t, policy.Spec.Ingress, 1)
-		assert.Equal(t, "192.168.1.0/24", policy.Spec.Ingress[0].From[0].IPBlock.CIDR)
-		assert.Equal(t, []string{"192.168.1.100/32"}, policy.Spec.Ingress[0].From[0].IPBlock.Except)
+		assert.Equal(t, cidr192Slash24, policy.Spec.Ingress[0].From[0].IPBlock.CIDR)
+		assert.Equal(t, []string{cidrHost192}, policy.Spec.Ingress[0].From[0].IPBlock.Except)
 	})
 
 	t.Run("Generate Policy with Named Port", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 				GlobalRules: []securityv1.GlobalRule{
 					{
-						Direction: "ingress",
-						Protocol:  "TCP",
-						NamedPort: "http",
+						Direction: DirectionIngress,
+						Protocol:  ProtocolTCP,
+						NamedPort: namedPortHTTP,
 					},
 					{
-						Direction: "egress",
-						Protocol:  "TCP",
+						Direction: DirectionEgress,
+						Protocol:  ProtocolTCP,
 						NamedPort: "grpc",
 					},
 				},
@@ -243,7 +243,7 @@ func TestGenerator(t *testing.T) {
 		policy := policies[0]
 
 		require.Len(t, policy.Spec.Ingress, 1)
-		assert.Equal(t, "http", policy.Spec.Ingress[0].Ports[0].Port.StrVal)
+		assert.Equal(t, namedPortHTTP, policy.Spec.Ingress[0].Ports[0].Port.StrVal)
 
 		// 1 DNS egress + 1 named port egress
 		require.Len(t, policy.Spec.Egress, 2)
@@ -253,15 +253,15 @@ func TestGenerator(t *testing.T) {
 	t.Run("Generate Allow Policy with Pod Selector", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type:             "allow",
+					Type:             PolicyTypeAllow,
 					DeniedNamespaces: []string{"denied-ns"},
 					PodSelector: map[string]string{
-						"app": "api",
+						labelApp: "api",
 					},
 				},
 			},
@@ -270,7 +270,7 @@ func TestGenerator(t *testing.T) {
 		policies, err := generator.GenerateNetworkPolicies(spec)
 		assert.NoError(t, err)
 		require.Len(t, policies, 1)
-		assert.Equal(t, "api", policies[0].Spec.PodSelector.MatchLabels["app"])
+		assert.Equal(t, "api", policies[0].Spec.PodSelector.MatchLabels[labelApp])
 		assert.Equal(t, "denied-ns", policies[0].Namespace)
 	})
 }

@@ -60,21 +60,21 @@ func createBasicGenerator(namespace, name string) *securityv1.NetworkPolicyGener
 			Mode:     policy.ModeLearning,
 			Duration: metav1.Duration{Duration: time.Minute},
 			Policy: securityv1.PolicyConfig{
-				Type:              "deny",
+				Type:              policy.PolicyTypeDeny,
 				AllowedNamespaces: []string{"test-ns1", "test-ns2"},
 			},
 			GlobalRules: []securityv1.GlobalRule{
 				{
-					Type:      "allow",
+					Type:      policy.PolicyTypeAllow,
 					Port:      80,
-					Protocol:  "TCP",
-					Direction: "ingress",
+					Protocol:  policy.ProtocolTCP,
+					Direction: policy.DirectionIngress,
 				},
 				{
-					Type:      "deny",
+					Type:      policy.PolicyTypeDeny,
 					Port:      25,
-					Protocol:  "TCP",
-					Direction: "egress",
+					Protocol:  policy.ProtocolTCP,
+					Direction: policy.DirectionEgress,
 				},
 			},
 		},

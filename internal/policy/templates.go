@@ -42,9 +42,9 @@ var Templates = map[string]PolicyTemplate{
 		Apply: func(spec *securityv1.NetworkPolicyGeneratorSpec) {
 			spec.Policy.Type = PolicyTypeDeny
 			spec.GlobalRules = mergeGlobalRules(spec.GlobalRules,
-				securityv1.GlobalRule{Type: "allow", Port: 80, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 443, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 443, Protocol: "TCP", Direction: DirectionEgress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 80, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 443, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 443, Protocol: ProtocolTCP, Direction: DirectionEgress},
 			)
 		},
 	},
@@ -54,10 +54,10 @@ var Templates = map[string]PolicyTemplate{
 		Apply: func(spec *securityv1.NetworkPolicyGeneratorSpec) {
 			spec.Policy.Type = PolicyTypeDeny
 			spec.GlobalRules = mergeGlobalRules(spec.GlobalRules,
-				securityv1.GlobalRule{Type: "allow", Port: 8080, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 8443, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 9090, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 443, Protocol: "TCP", Direction: DirectionEgress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 8080, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 8443, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9090, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 443, Protocol: ProtocolTCP, Direction: DirectionEgress},
 			)
 		},
 	},
@@ -67,10 +67,10 @@ var Templates = map[string]PolicyTemplate{
 		Apply: func(spec *securityv1.NetworkPolicyGeneratorSpec) {
 			spec.Policy.Type = PolicyTypeDeny
 			spec.GlobalRules = mergeGlobalRules(spec.GlobalRules,
-				securityv1.GlobalRule{Type: "allow", Port: 3306, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 5432, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 6379, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 27017, Protocol: "TCP", Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 3306, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 5432, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 6379, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 27017, Protocol: ProtocolTCP, Direction: DirectionIngress},
 			)
 		},
 	},
@@ -80,10 +80,10 @@ var Templates = map[string]PolicyTemplate{
 		Apply: func(spec *securityv1.NetworkPolicyGeneratorSpec) {
 			spec.Policy.Type = PolicyTypeDeny
 			spec.GlobalRules = mergeGlobalRules(spec.GlobalRules,
-				securityv1.GlobalRule{Type: "allow", Port: 9090, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 9100, Protocol: "TCP", Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: "allow", Port: 9090, Protocol: "TCP", Direction: DirectionEgress},
-				securityv1.GlobalRule{Type: "allow", Port: 443, Protocol: "TCP", Direction: DirectionEgress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9090, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9100, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9090, Protocol: ProtocolTCP, Direction: DirectionEgress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 443, Protocol: ProtocolTCP, Direction: DirectionEgress},
 			)
 		},
 	},

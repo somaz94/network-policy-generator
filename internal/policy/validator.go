@@ -69,7 +69,7 @@ func (v *Validator) validatePorts(ports []networkingv1.NetworkPolicyPort) error 
 
 		if port.Protocol != nil {
 			protocol := *port.Protocol
-			if protocol != "TCP" && protocol != "UDP" && protocol != "SCTP" {
+			if protocol != ProtocolTCP && protocol != ProtocolUDP && protocol != ProtocolSCTP {
 				return fmt.Errorf("invalid protocol %s for port %d", protocol, i)
 			}
 		}

@@ -64,14 +64,14 @@ var _ = Describe("Mode Handlers", func() {
 			result, err := reconciler.handleLearningMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(1 * time.Minute))
-			Expect(generator.Status.Phase).To(Equal("Learning"))
+			Expect(generator.Status.Phase).To(Equal(policy.PhaseLearning))
 			Expect(generator.Status.LastAnalyzed.IsZero()).To(BeFalse())
 		})
 
 		It("should maintain learning mode during duration", func() {
 			generator := createBasicGenerator(namespace, generatorName)
 			generator.Spec.Duration = metav1.Duration{Duration: 5 * time.Minute}
-			generator.Status.Phase = "Learning"
+			generator.Status.Phase = policy.PhaseLearning
 
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
@@ -88,7 +88,7 @@ var _ = Describe("Mode Handlers", func() {
 		It("should create network policies in enforcing mode", func() {
 			generator := createBasicGenerator(namespace, generatorName)
 			generator.Spec.Mode = policy.ModeEnforcing
-			generator.Status.Phase = "Enforcing"
+			generator.Status.Phase = policy.PhaseEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			result, err := reconciler.handleEnforcingMode(ctx, generator)
@@ -110,7 +110,7 @@ var _ = Describe("Mode Handlers", func() {
 		It("should handle policy update in enforcing mode", func() {
 			generator := createBasicGenerator(namespace, generatorName)
 			generator.Spec.Mode = policy.ModeEnforcing
-			generator.Status.Phase = "Enforcing"
+			generator.Status.Phase = policy.PhaseEnforcing
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
 
 			_, err := reconciler.handleEnforcingMode(ctx, generator)
@@ -195,7 +195,7 @@ var _ = Describe("Mode Handlers", func() {
 			// First call triggers initial setup
 			_, err := reconciler.handleLearningMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(generator.Status.Phase).To(Equal("Learning"))
+			Expect(generator.Status.Phase).To(Equal(policy.PhaseLearning))
 
 			// Re-fetch to get latest version
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
@@ -212,14 +212,14 @@ var _ = Describe("Mode Handlers", func() {
 			// so the assertion must keep reading the deprecated field.
 			//nolint:staticcheck
 			Expect(result.Requeue).To(BeTrue())
-			Expect(generator.Status.Phase).To(Equal("Enforcing"))
+			Expect(generator.Status.Phase).To(Equal(policy.PhaseEnforcing))
 		})
 	})
 
 	Context("CiliumGVK helper", func() {
 		It("should return correct GVK", func() {
 			gvk := gvkForEngine(policy.EngineCilium)
-			Expect(gvk.Group).To(Equal("cilium.io"))
+			Expect(gvk.Group).To(Equal(policy.CiliumGroup))
 			Expect(gvk.Version).To(Equal("v2"))
 			Expect(gvk.Kind).To(Equal("CiliumNetworkPolicy"))
 		})
@@ -234,11 +234,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -415,7 +415,7 @@ var _ = Describe("Mode Handlers", func() {
 					Mode:     policy.ModeEnforcing,
 					Duration: metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:             "allow",
+						Type:             policy.PolicyTypeAllow,
 						DeniedNamespaces: []string{namespace},
 					},
 				},
@@ -739,12 +739,12 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					DryRun:       true,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -770,12 +770,12 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					DryRun:       true,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -874,12 +874,12 @@ var _ = Describe("Mode Handlers", func() {
 			generator.Spec.CIDRRules = []securityv1.CIDRRule{
 				{
 					CIDR:      "10.0.0.0/8",
-					Direction: "egress",
+					Direction: policy.DirectionEgress,
 				},
 				{
 					CIDR:      "192.168.1.0/24",
 					Except:    []string{"192.168.1.100/32"},
-					Direction: "ingress",
+					Direction: policy.DirectionIngress,
 				},
 			}
 			Expect(k8sClient.Create(ctx, generator)).To(Succeed())
@@ -931,14 +931,14 @@ var _ = Describe("Mode Handlers", func() {
 					Mode:     policy.ModeEnforcing,
 					Duration: metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 					GlobalRules: []securityv1.GlobalRule{
 						{
-							Type:      "allow",
-							NamedPort: "http",
-							Protocol:  "TCP",
-							Direction: "ingress",
+							Type:      policy.PolicyTypeAllow,
+							NamedPort: namedPortHTTP,
+							Protocol:  policy.ProtocolTCP,
+							Direction: policy.DirectionIngress,
 						},
 					},
 				},
@@ -959,7 +959,7 @@ var _ = Describe("Mode Handlers", func() {
 			hasNamedPort := false
 			for _, rule := range np.Spec.Ingress {
 				for _, port := range rule.Ports {
-					if port.Port != nil && port.Port.StrVal == "http" {
+					if port.Port != nil && port.Port.StrVal == namedPortHTTP {
 						hasNamedPort = true
 					}
 				}
@@ -971,7 +971,7 @@ var _ = Describe("Mode Handlers", func() {
 	Context("CalicoGVK helper", func() {
 		It("should return correct GVK", func() {
 			gvk := gvkForEngine(policy.EngineCalico)
-			Expect(gvk.Group).To(Equal("crd.projectcalico.org"))
+			Expect(gvk.Group).To(Equal(policy.CalicoGroup))
 			Expect(gvk.Version).To(Equal("v1"))
 			Expect(gvk.Kind).To(Equal("NetworkPolicy"))
 		})
@@ -986,10 +986,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1010,10 +1010,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1021,7 +1021,7 @@ var _ = Describe("Mode Handlers", func() {
 
 			mockCl := &mockClient{
 				Client:     k8sClient,
-				getError:   apierrors.NewNotFound(schema.GroupResource{Group: "crd.projectcalico.org", Resource: "networkpolicies"}, ""),
+				getError:   apierrors.NewNotFound(schema.GroupResource{Group: policy.CalicoGroup, Resource: resourceNetworkPolicies}, ""),
 				noopCreate: true,
 			}
 			calicoReconciler := &NetworkPolicyGeneratorReconciler{
@@ -1045,11 +1045,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					DryRun:       true,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1076,10 +1076,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1104,7 +1104,7 @@ var _ = Describe("Mode Handlers", func() {
 					TemplateName: "web-app",
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1158,19 +1158,19 @@ var _ = Describe("Mode Handlers", func() {
 				{
 					SourceNamespace: "external-ns",
 					DestNamespace:   namespace,
-					Protocol:        "TCP",
+					Protocol:        policy.ProtocolTCP,
 					Port:            80,
 				},
 				{
 					SourceNamespace: namespace,
 					DestNamespace:   "db-ns",
-					Protocol:        "TCP",
+					Protocol:        policy.ProtocolTCP,
 					Port:            5432,
 				},
 				{
 					SourceNamespace: "monitoring-ns",
 					DestNamespace:   namespace,
-					Protocol:        "TCP",
+					Protocol:        policy.ProtocolTCP,
 					Port:            9090,
 				},
 			}
@@ -1189,13 +1189,13 @@ var _ = Describe("Mode Handlers", func() {
 				{
 					SourceNamespace: "external-ns",
 					DestNamespace:   namespace,
-					Protocol:        "TCP",
+					Protocol:        policy.ProtocolTCP,
 					Port:            80,
 				},
 				{
 					SourceNamespace: namespace,
 					DestNamespace:   "db-ns",
-					Protocol:        "TCP",
+					Protocol:        policy.ProtocolTCP,
 					Port:            5432,
 				},
 			}
@@ -1239,10 +1239,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1273,10 +1273,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1309,10 +1309,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1342,10 +1342,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1438,10 +1438,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1494,11 +1494,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1507,7 +1507,7 @@ var _ = Describe("Mode Handlers", func() {
 			// Mock: Get returns NotFound, Create fails
 			mockCl := &mockClient{
 				Client:      k8sClient,
-				getError:    apierrors.NewNotFound(schema.GroupResource{Group: "crd.projectcalico.org", Resource: "networkpolicies"}, ""),
+				getError:    apierrors.NewNotFound(schema.GroupResource{Group: policy.CalicoGroup, Resource: resourceNetworkPolicies}, ""),
 				createError: fmt.Errorf("calico create failed"),
 			}
 			calicoReconciler := &NetworkPolicyGeneratorReconciler{
@@ -1531,11 +1531,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1566,11 +1566,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1578,7 +1578,7 @@ var _ = Describe("Mode Handlers", func() {
 
 			mockCl := &mockClient{
 				Client:            k8sClient,
-				getError:          apierrors.NewNotFound(schema.GroupResource{Group: "crd.projectcalico.org", Resource: "networkpolicies"}, ""),
+				getError:          apierrors.NewNotFound(schema.GroupResource{Group: policy.CalicoGroup, Resource: resourceNetworkPolicies}, ""),
 				noopCreate:        true,
 				statusUpdateError: fmt.Errorf("calico status update failed"),
 			}
@@ -1603,11 +1603,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1642,10 +1642,10 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1696,11 +1696,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "calico",
+					PolicyEngine: policy.EngineCalico,
 					DryRun:       true,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type: "deny",
+						Type: policy.PolicyTypeDeny,
 					},
 				},
 			}
@@ -1730,11 +1730,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1743,7 +1743,7 @@ var _ = Describe("Mode Handlers", func() {
 			// Mock: Get returns NotFound (no existing cilium policy), Create succeeds (noop)
 			mockCl := &mockClient{
 				Client:     k8sClient,
-				getError:   apierrors.NewNotFound(schema.GroupResource{Group: "cilium.io", Resource: "ciliumnetworkpolicies"}, ""),
+				getError:   apierrors.NewNotFound(schema.GroupResource{Group: policy.CiliumGroup, Resource: resourceCiliumNetworkPolicies}, ""),
 				noopCreate: true,
 			}
 			ciliumReconciler := &NetworkPolicyGeneratorReconciler{
@@ -1767,11 +1767,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1804,11 +1804,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1817,7 +1817,7 @@ var _ = Describe("Mode Handlers", func() {
 			// Mock: Get returns NotFound, Create fails
 			mockCl := &mockClient{
 				Client:      k8sClient,
-				getError:    apierrors.NewNotFound(schema.GroupResource{Group: "cilium.io", Resource: "ciliumnetworkpolicies"}, ""),
+				getError:    apierrors.NewNotFound(schema.GroupResource{Group: policy.CiliumGroup, Resource: resourceCiliumNetworkPolicies}, ""),
 				createError: fmt.Errorf("cilium create failed"),
 			}
 			ciliumReconciler := &NetworkPolicyGeneratorReconciler{
@@ -1841,11 +1841,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1877,11 +1877,11 @@ var _ = Describe("Mode Handlers", func() {
 				},
 				Spec: securityv1.NetworkPolicyGeneratorSpec{
 					Mode:         policy.ModeEnforcing,
-					PolicyEngine: "cilium",
+					PolicyEngine: policy.EngineCilium,
 					Duration:     metav1.Duration{Duration: time.Minute},
 					Policy: securityv1.PolicyConfig{
-						Type:              "deny",
-						AllowedNamespaces: []string{"ns1"},
+						Type:              policy.PolicyTypeDeny,
+						AllowedNamespaces: []string{nsOne},
 					},
 				},
 			}
@@ -1890,7 +1890,7 @@ var _ = Describe("Mode Handlers", func() {
 			// Mock: Get returns NotFound, Create succeeds (noop), Status update fails
 			mockCl := &mockClient{
 				Client:            k8sClient,
-				getError:          apierrors.NewNotFound(schema.GroupResource{Group: "cilium.io", Resource: "ciliumnetworkpolicies"}, ""),
+				getError:          apierrors.NewNotFound(schema.GroupResource{Group: policy.CiliumGroup, Resource: resourceCiliumNetworkPolicies}, ""),
 				noopCreate:        true,
 				statusUpdateError: fmt.Errorf("cilium status update failed"),
 			}

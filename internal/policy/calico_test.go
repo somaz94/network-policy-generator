@@ -15,20 +15,20 @@ func TestCalicoEngine(t *testing.T) {
 	engine := NewCalicoEngine()
 
 	t.Run("EngineName", func(t *testing.T) {
-		assert.Equal(t, "calico", engine.EngineName())
+		assert.Equal(t, EngineCalico, engine.EngineName())
 	})
 
 	t.Run("Generate Basic Deny Policy", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 				UID:       types.UID("test-uid"),
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				PolicyEngine: "calico",
+				PolicyEngine: EngineCalico,
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 			},
 		}
@@ -39,7 +39,7 @@ func TestCalicoEngine(t *testing.T) {
 
 		policy := objects[0].(*CalicoNetworkPolicy)
 		assert.Equal(t, "test-policy-generated", policy.Name)
-		assert.Equal(t, "test-namespace", policy.Namespace)
+		assert.Equal(t, nsTest, policy.Namespace)
 		assert.Equal(t, CalicoAPIVersion, policy.APIVersion)
 		assert.Equal(t, CalicoKind, policy.Kind)
 		assert.Equal(t, "all()", policy.Spec.Selector)
@@ -49,20 +49,20 @@ func TestCalicoEngine(t *testing.T) {
 		assert.Empty(t, policy.Spec.Ingress)
 		require.Len(t, policy.Spec.Egress, 1) // DNS only
 		assert.Equal(t, CalicoActionAllow, policy.Spec.Egress[0].Action)
-		assert.Equal(t, "UDP", policy.Spec.Egress[0].Protocol)
+		assert.Equal(t, ProtocolUDP, policy.Spec.Egress[0].Protocol)
 	})
 
 	t.Run("Generate Deny Type with Allowed Namespaces", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				PolicyEngine: "calico",
+				PolicyEngine: EngineCalico,
 				Policy: securityv1.PolicyConfig{
-					Type:              "deny",
-					AllowedNamespaces: []string{"allowed-ns1", "allowed-ns2"},
+					Type:              PolicyTypeDeny,
+					AllowedNamespaces: []string{nsAllowed1, nsAllowed2},
 				},
 			},
 		}
@@ -72,11 +72,11 @@ func TestCalicoEngine(t *testing.T) {
 		require.Len(t, objects, 1)
 
 		policy := objects[0].(*CalicoNetworkPolicy)
-		assert.Equal(t, "test-namespace", policy.Namespace)
+		assert.Equal(t, nsTest, policy.Namespace)
 		require.Len(t, policy.Spec.Ingress, 1)
 		assert.Equal(t, CalicoActionAllow, policy.Spec.Ingress[0].Action)
-		assert.Contains(t, policy.Spec.Ingress[0].Source.NamespaceSelector, "allowed-ns1")
-		assert.Contains(t, policy.Spec.Ingress[0].Source.NamespaceSelector, "allowed-ns2")
+		assert.Contains(t, policy.Spec.Ingress[0].Source.NamespaceSelector, nsAllowed1)
+		assert.Contains(t, policy.Spec.Ingress[0].Source.NamespaceSelector, nsAllowed2)
 		// 1 namespace egress + 1 DNS egress
 		require.Len(t, policy.Spec.Egress, 2)
 	})
@@ -84,13 +84,13 @@ func TestCalicoEngine(t *testing.T) {
 	t.Run("Generate Allow Type with Denied Namespaces", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				PolicyEngine: "calico",
+				PolicyEngine: EngineCalico,
 				Policy: securityv1.PolicyConfig{
-					Type:             "allow",
+					Type:             PolicyTypeAllow,
 					DeniedNamespaces: []string{"denied-ns1", "denied-ns2"},
 				},
 			},
@@ -112,13 +112,13 @@ func TestCalicoEngine(t *testing.T) {
 	t.Run("Allow Type with No Denied Namespaces", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				PolicyEngine: "calico",
+				PolicyEngine: EngineCalico,
 				Policy: securityv1.PolicyConfig{
-					Type: "allow",
+					Type: PolicyTypeAllow,
 				},
 			},
 		}
@@ -131,17 +131,17 @@ func TestCalicoEngine(t *testing.T) {
 	t.Run("Generate Policy with Global Rules", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				PolicyEngine: "calico",
+				PolicyEngine: EngineCalico,
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 				GlobalRules: []securityv1.GlobalRule{
-					{Direction: "ingress", Protocol: "TCP", Port: 80},
-					{Direction: "egress", Protocol: "TCP", Port: 443},
+					{Direction: DirectionIngress, Protocol: ProtocolTCP, Port: 80},
+					{Direction: DirectionEgress, Protocol: ProtocolTCP, Port: 443},
 				},
 			},
 		}
@@ -154,7 +154,7 @@ func TestCalicoEngine(t *testing.T) {
 		// 1 global ingress rule
 		require.Len(t, policy.Spec.Ingress, 1)
 		assert.Equal(t, CalicoActionAllow, policy.Spec.Ingress[0].Action)
-		assert.Equal(t, "TCP", policy.Spec.Ingress[0].Protocol)
+		assert.Equal(t, ProtocolTCP, policy.Spec.Ingress[0].Protocol)
 
 		// 1 DNS egress + 1 global egress
 		require.Len(t, policy.Spec.Egress, 2)
@@ -163,17 +163,17 @@ func TestCalicoEngine(t *testing.T) {
 	t.Run("Generate Policy with CIDR Rules", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				PolicyEngine: "calico",
+				PolicyEngine: EngineCalico,
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 				CIDRRules: []securityv1.CIDRRule{
-					{CIDR: "10.0.0.0/8", Direction: "egress"},
-					{CIDR: "192.168.1.0/24", Except: []string{"192.168.1.100/32"}, Direction: "ingress"},
+					{CIDR: cidr10Slash8, Direction: DirectionEgress},
+					{CIDR: cidr192Slash24, Except: []string{cidrHost192}, Direction: DirectionIngress},
 				},
 			},
 		}
@@ -185,27 +185,27 @@ func TestCalicoEngine(t *testing.T) {
 		policy := objects[0].(*CalicoNetworkPolicy)
 		// 1 DNS egress + 1 CIDR egress
 		require.Len(t, policy.Spec.Egress, 2)
-		assert.Contains(t, policy.Spec.Egress[1].Destination.Nets, "10.0.0.0/8")
+		assert.Contains(t, policy.Spec.Egress[1].Destination.Nets, cidr10Slash8)
 
 		// 1 CIDR ingress
 		require.Len(t, policy.Spec.Ingress, 1)
-		assert.Contains(t, policy.Spec.Ingress[0].Source.Nets, "192.168.1.0/24")
-		assert.Contains(t, policy.Spec.Ingress[0].Source.NotNets, "192.168.1.100/32")
+		assert.Contains(t, policy.Spec.Ingress[0].Source.Nets, cidr192Slash24)
+		assert.Contains(t, policy.Spec.Ingress[0].Source.NotNets, cidrHost192)
 	})
 
 	t.Run("Generate Policy with Pod Selector", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				PolicyEngine: "calico",
+				PolicyEngine: EngineCalico,
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 					PodSelector: map[string]string{
-						"app":  "web",
-						"tier": "frontend",
+						labelApp:  labelValueWeb,
+						labelTier: labelValueFrontend,
 					},
 				},
 			},
@@ -223,16 +223,16 @@ func TestCalicoEngine(t *testing.T) {
 	t.Run("Generate Policy with Named Port", func(t *testing.T) {
 		spec := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
-				PolicyEngine: "calico",
+				PolicyEngine: EngineCalico,
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 				GlobalRules: []securityv1.GlobalRule{
-					{Direction: "ingress", Protocol: "TCP", NamedPort: "http"},
+					{Direction: DirectionIngress, Protocol: ProtocolTCP, NamedPort: namedPortHTTP},
 				},
 			},
 		}
@@ -243,7 +243,7 @@ func TestCalicoEngine(t *testing.T) {
 
 		policy := objects[0].(*CalicoNetworkPolicy)
 		require.Len(t, policy.Spec.Ingress, 1)
-		assert.Equal(t, "http", policy.Spec.Ingress[0].Destination.Ports[0])
+		assert.Equal(t, namedPortHTTP, policy.Spec.Ingress[0].Destination.Ports[0])
 	})
 }
 
@@ -255,8 +255,8 @@ func TestCalicoNetworkPolicyDeepCopy(t *testing.T) {
 			Kind:       CalicoKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      nameTest,
+			Namespace: nsDefault,
 		},
 		Spec: &CalicoNetworkPolicySpec{
 			Order:    &order,
@@ -264,7 +264,7 @@ func TestCalicoNetworkPolicyDeepCopy(t *testing.T) {
 			Types:    []string{"Ingress", "Egress"},
 			Ingress: []CalicoRule{{
 				Action: CalicoActionAllow,
-				Source: &CalicoEntityRule{Nets: []string{"10.0.0.0/8"}},
+				Source: &CalicoEntityRule{Nets: []string{cidr10Slash8}},
 			}},
 			Egress: []CalicoRule{{
 				Action:      CalicoActionAllow,
@@ -301,19 +301,19 @@ func TestCalicoDeepCopyNil(t *testing.T) {
 
 func TestBuildCalicoSelector(t *testing.T) {
 	t.Run("single label", func(t *testing.T) {
-		result := buildCalicoSelector(map[string]string{"app": "web"})
+		result := buildCalicoSelector(map[string]string{labelApp: labelValueWeb})
 		assert.Equal(t, "app == 'web'", result)
 	})
 }
 
 func TestBuildCalicoNamespaceSelector(t *testing.T) {
 	t.Run("single namespace", func(t *testing.T) {
-		result := buildCalicoNamespaceSelector([]string{"ns1"})
+		result := buildCalicoNamespaceSelector([]string{nsOne})
 		assert.Equal(t, "projectcalico.org/name == 'ns1'", result)
 	})
 
 	t.Run("multiple namespaces", func(t *testing.T) {
-		result := buildCalicoNamespaceSelector([]string{"ns1", "ns2"})
+		result := buildCalicoNamespaceSelector([]string{nsOne, nsTwo})
 		assert.Contains(t, result, "projectcalico.org/name in {")
 		assert.Contains(t, result, "'ns1'")
 		assert.Contains(t, result, "'ns2'")

@@ -14,6 +14,10 @@ import (
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
 )
 
+// protocolTCP is the protocol recorded for every observed flow; the collector
+// only samples TCP endpoints today.
+const protocolTCP = "TCP"
+
 // Collector handles the collection of network traffic data
 type Collector struct {
 	client    kubernetes.Interface
@@ -88,7 +92,7 @@ func (c *Collector) AnalyzeEnvVars(envVars []corev1.EnvVar, sourcePod *corev1.Po
 					DestNamespace:   ExtractNamespace(host),
 					DestPod:         ExtractServiceName(host),
 					Port:            port,
-					Protocol:        "TCP",
+					Protocol:        protocolTCP,
 				}
 				flows = append(flows, flow)
 			}

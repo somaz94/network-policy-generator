@@ -19,15 +19,15 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate Valid Policy", func(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: networkingv1.NetworkPolicySpec{
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
 					{
 						Ports: []networkingv1.NetworkPolicyPort{
 							{
-								Protocol: (*v1.Protocol)(ptr.To("TCP")),
+								Protocol: (*v1.Protocol)(ptr.To(ProtocolTCP)),
 								Port:     ptr.To(intstr.FromInt32(80)),
 							},
 						},
@@ -38,7 +38,7 @@ func TestValidator(t *testing.T) {
 
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 		}
 
@@ -49,22 +49,22 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate Namespace Configurations", func(t *testing.T) {
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type:              "deny",
-					AllowedNamespaces: []string{"ns1", "ns2"},
-					DeniedNamespaces:  []string{"ns1", "ns3"}, // Overlap with allowed
+					Type:              PolicyTypeDeny,
+					AllowedNamespaces: []string{nsOne, nsTwo},
+					DeniedNamespaces:  []string{nsOne, "ns3"}, // Overlap with allowed
 				},
 			},
 		}
 
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 		}
 
@@ -76,15 +76,15 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate Invalid Port", func(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: networkingv1.NetworkPolicySpec{
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
 					{
 						Ports: []networkingv1.NetworkPolicyPort{
 							{
-								Protocol: (*v1.Protocol)(ptr.To("TCP")),
+								Protocol: (*v1.Protocol)(ptr.To(ProtocolTCP)),
 								Port:     ptr.To(intstr.FromInt32(0)), // Invalid port
 							},
 						},
@@ -95,7 +95,7 @@ func TestValidator(t *testing.T) {
 
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 		}
 
@@ -107,12 +107,12 @@ func TestValidator(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "",
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 		}
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 		}
 		err := validator.ValidatePolicy(policy, generator)
@@ -123,17 +123,17 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate Namespace Mismatch for Deny Type", func(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
+				Name:      nameTestPolicy,
 				Namespace: "different-namespace",
 			},
 		}
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "deny",
+					Type: PolicyTypeDeny,
 				},
 			},
 		}
@@ -145,17 +145,17 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate Allow Type Allows Different Namespace", func(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
+				Name:      nameTestPolicy,
 				Namespace: "denied-ns",
 			},
 		}
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type: "allow",
+					Type: PolicyTypeAllow,
 				},
 			},
 		}
@@ -166,15 +166,15 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate Invalid Egress Port", func(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: networkingv1.NetworkPolicySpec{
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					{
 						Ports: []networkingv1.NetworkPolicyPort{
 							{
-								Protocol: (*v1.Protocol)(ptr.To("TCP")),
+								Protocol: (*v1.Protocol)(ptr.To(ProtocolTCP)),
 								Port:     ptr.To(intstr.FromInt32(70000)), // Out of range
 							},
 						},
@@ -184,7 +184,7 @@ func TestValidator(t *testing.T) {
 		}
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 		}
 		err := validator.ValidatePolicy(policy, generator)
@@ -195,8 +195,8 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate SCTP Protocol Is Valid", func(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: networkingv1.NetworkPolicySpec{
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -213,7 +213,7 @@ func TestValidator(t *testing.T) {
 		}
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 		}
 		err := validator.ValidatePolicy(policy, generator)
@@ -223,20 +223,20 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate No Namespace Overlap for Allow Type", func(t *testing.T) {
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 			Spec: securityv1.NetworkPolicyGeneratorSpec{
 				Policy: securityv1.PolicyConfig{
-					Type:              "allow",
-					AllowedNamespaces: []string{"ns1"},
-					DeniedNamespaces:  []string{"ns1"},
+					Type:              PolicyTypeAllow,
+					AllowedNamespaces: []string{nsOne},
+					DeniedNamespaces:  []string{nsOne},
 				},
 			},
 		}
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 		}
 		// allow type skips namespace overlap check
@@ -247,8 +247,8 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate Invalid Protocol", func(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: networkingv1.NetworkPolicySpec{
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
@@ -266,7 +266,7 @@ func TestValidator(t *testing.T) {
 
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 		}
 
@@ -277,16 +277,16 @@ func TestValidator(t *testing.T) {
 	t.Run("Validate Named Port Is Valid", func(t *testing.T) {
 		policy := &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-policy",
-				Namespace: "test-namespace",
+				Name:      nameTestPolicy,
+				Namespace: nsTest,
 			},
 			Spec: networkingv1.NetworkPolicySpec{
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
 					{
 						Ports: []networkingv1.NetworkPolicyPort{
 							{
-								Protocol: (*v1.Protocol)(ptr.To("TCP")),
-								Port:     ptr.To(intstr.FromString("http")),
+								Protocol: (*v1.Protocol)(ptr.To(ProtocolTCP)),
+								Port:     ptr.To(intstr.FromString(namedPortHTTP)),
 							},
 						},
 					},
@@ -295,7 +295,7 @@ func TestValidator(t *testing.T) {
 		}
 		generator := &securityv1.NetworkPolicyGenerator{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-namespace",
+				Namespace: nsTest,
 			},
 		}
 		err := validator.ValidatePolicy(policy, generator)
@@ -308,7 +308,7 @@ func TestValidateGlobalRules(t *testing.T) {
 
 	t.Run("Valid Numeric Port", func(t *testing.T) {
 		rules := []securityv1.GlobalRule{
-			{Port: 80, Protocol: "TCP", Direction: "ingress"},
+			{Port: 80, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 		err := validator.ValidateGlobalRules(rules)
 		assert.NoError(t, err)
@@ -316,7 +316,7 @@ func TestValidateGlobalRules(t *testing.T) {
 
 	t.Run("Valid Named Port", func(t *testing.T) {
 		rules := []securityv1.GlobalRule{
-			{NamedPort: "http", Protocol: "TCP", Direction: "ingress"},
+			{NamedPort: namedPortHTTP, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 		err := validator.ValidateGlobalRules(rules)
 		assert.NoError(t, err)
@@ -324,7 +324,7 @@ func TestValidateGlobalRules(t *testing.T) {
 
 	t.Run("Error When Neither Port Nor NamedPort", func(t *testing.T) {
 		rules := []securityv1.GlobalRule{
-			{Protocol: "TCP", Direction: "ingress"},
+			{Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 		err := validator.ValidateGlobalRules(rules)
 		assert.Error(t, err)
@@ -333,7 +333,7 @@ func TestValidateGlobalRules(t *testing.T) {
 
 	t.Run("Error When Both Port And NamedPort", func(t *testing.T) {
 		rules := []securityv1.GlobalRule{
-			{Port: 80, NamedPort: "http", Protocol: "TCP", Direction: "ingress"},
+			{Port: 80, NamedPort: namedPortHTTP, Protocol: ProtocolTCP, Direction: DirectionIngress},
 		}
 		err := validator.ValidateGlobalRules(rules)
 		assert.Error(t, err)
@@ -346,8 +346,8 @@ func TestValidateCIDRRules(t *testing.T) {
 
 	t.Run("Valid CIDR Rules", func(t *testing.T) {
 		rules := []securityv1.CIDRRule{
-			{CIDR: "10.0.0.0/8", Direction: "egress"},
-			{CIDR: "192.168.1.0/24", Except: []string{"192.168.1.100/32"}, Direction: "ingress"},
+			{CIDR: cidr10Slash8, Direction: DirectionEgress},
+			{CIDR: cidr192Slash24, Except: []string{cidrHost192}, Direction: DirectionIngress},
 		}
 		err := validator.ValidateCIDRRules(rules)
 		assert.NoError(t, err)
@@ -355,7 +355,7 @@ func TestValidateCIDRRules(t *testing.T) {
 
 	t.Run("Invalid CIDR", func(t *testing.T) {
 		rules := []securityv1.CIDRRule{
-			{CIDR: "not-a-cidr", Direction: "egress"},
+			{CIDR: "not-a-cidr", Direction: DirectionEgress},
 		}
 		err := validator.ValidateCIDRRules(rules)
 		assert.Error(t, err)
@@ -364,7 +364,7 @@ func TestValidateCIDRRules(t *testing.T) {
 
 	t.Run("Invalid Except CIDR", func(t *testing.T) {
 		rules := []securityv1.CIDRRule{
-			{CIDR: "10.0.0.0/8", Except: []string{"invalid"}, Direction: "egress"},
+			{CIDR: cidr10Slash8, Except: []string{"invalid"}, Direction: DirectionEgress},
 		}
 		err := validator.ValidateCIDRRules(rules)
 		assert.Error(t, err)
@@ -373,7 +373,7 @@ func TestValidateCIDRRules(t *testing.T) {
 
 	t.Run("Invalid Direction", func(t *testing.T) {
 		rules := []securityv1.CIDRRule{
-			{CIDR: "10.0.0.0/8", Direction: "invalid"},
+			{CIDR: cidr10Slash8, Direction: "invalid"},
 		}
 		err := validator.ValidateCIDRRules(rules)
 		assert.Error(t, err)

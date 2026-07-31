@@ -191,8 +191,8 @@ func dnsEgressRuleCilium() CiliumEgressRule {
 		}},
 		ToPorts: []CiliumPortRule{{
 			Ports: []CiliumPort{
-				{Port: DNSPortStr, Protocol: "UDP"},
-				{Port: DNSPortStr, Protocol: "TCP"},
+				{Port: DNSPortStr, Protocol: ProtocolUDP},
+				{Port: DNSPortStr, Protocol: ProtocolTCP},
 			},
 		}},
 	}

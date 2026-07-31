@@ -19,6 +19,11 @@ const (
 
 	policyTypeAllow = "allow"
 	policyTypeDeny  = "deny"
+
+	directionIngress = "ingress"
+	directionEgress  = "egress"
+
+	protocolTCP = "TCP"
 )
 
 // SetupWebhookWithManager sets up the webhook with the Manager.
@@ -152,7 +157,7 @@ func validateCIDRRules(spec *NetworkPolicyGeneratorSpec) error {
 				return fmt.Errorf("spec.cidrRules[%d].except[%d]: invalid CIDR %q: %v", i, j, except, err)
 			}
 		}
-		if rule.Direction != "ingress" && rule.Direction != "egress" {
+		if rule.Direction != directionIngress && rule.Direction != directionEgress {
 			return fmt.Errorf("spec.cidrRules[%d]: direction must be 'ingress' or 'egress'", i)
 		}
 	}
