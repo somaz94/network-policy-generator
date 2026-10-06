@@ -15,12 +15,12 @@ if [ -z "$COMMITS" ]; then
   exit 1
 fi
 
-FEATS=$(echo "$COMMITS" | grep -E "^- feat:" || true)
-FIXES=$(echo "$COMMITS" | grep -E "^- fix:" || true)
-TESTS=$(echo "$COMMITS" | grep -E "^- test:" || true)
-DOCS=$(echo "$COMMITS" | grep -E "^- docs:" || true)
-OTHERS=$(echo "$COMMITS" | grep -vE "^- (feat|fix|test|docs|ci|chore):" || true)
-CI=$(echo "$COMMITS" | grep -E "^- (ci|chore):" || true)
+FEATS=$(echo "$COMMITS" | grep -E '^- feat(\([^)]*\))?!?:' || true)
+FIXES=$(echo "$COMMITS" | grep -E '^- fix(\([^)]*\))?!?:' || true)
+TESTS=$(echo "$COMMITS" | grep -E '^- test(\([^)]*\))?!?:' || true)
+DOCS=$(echo "$COMMITS" | grep -E '^- docs(\([^)]*\))?!?:' || true)
+OTHERS=$(echo "$COMMITS" | grep -vE '^- (feat|fix|test|docs|ci|chore)(\([^)]*\))?!?:' || true)
+CI=$(echo "$COMMITS" | grep -E '^- (ci|chore)(\([^)]*\))?!?:' || true)
 
 SUMMARY=""
 [ -n "$FEATS" ] && SUMMARY="${SUMMARY}${FEATS}\n"
