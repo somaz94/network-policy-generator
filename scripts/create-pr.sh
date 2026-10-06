@@ -7,11 +7,13 @@ set -euo pipefail
 TITLE="${1:?Usage: create-pr.sh \"PR title\"}"
 BRANCH=$(git branch --show-current)
 BASE="main"
+git fetch -q origin "$BASE"
+BASE_REF="origin/${BASE}"
 
-COMMITS=$(git log "${BASE}..HEAD" --pretty=format:"- %s" --reverse 2>/dev/null || echo "")
+COMMITS=$(git log "${BASE_REF}..HEAD" --pretty=format:"- %s" --reverse 2>/dev/null || echo "")
 
 if [ -z "$COMMITS" ]; then
-  echo "No commits found between ${BASE} and ${BRANCH}"
+  echo "No commits found between ${BASE_REF} and ${BRANCH}"
   exit 1
 fi
 
@@ -33,7 +35,7 @@ if [ -z "$SUMMARY" ]; then
   SUMMARY="$COMMITS"
 fi
 
-CHANGED_PKGS=$(git diff "${BASE}..HEAD" --name-only | grep '_test\.go$' | sed 's|/[^/]*$||' | sort -u || true)
+CHANGED_PKGS=$(git diff "${BASE_REF}...HEAD" --name-only | grep '_test\.go$' | sed 's|/[^/]*$||' | sort -u || true)
 HAS_TESTS=false
 [ -n "$CHANGED_PKGS" ] && HAS_TESTS=true
 
