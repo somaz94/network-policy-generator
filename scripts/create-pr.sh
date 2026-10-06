@@ -8,7 +8,6 @@ TITLE="${1:?Usage: create-pr.sh \"PR title\"}"
 BRANCH=$(git branch --show-current)
 BASE="main"
 
-# Get commits since diverging from base branch.
 COMMITS=$(git log "${BASE}..HEAD" --pretty=format:"- %s" --reverse 2>/dev/null || echo "")
 
 if [ -z "$COMMITS" ]; then
@@ -16,7 +15,6 @@ if [ -z "$COMMITS" ]; then
   exit 1
 fi
 
-# Categorize commits.
 FEATS=$(echo "$COMMITS" | grep -E "^- feat:" || true)
 FIXES=$(echo "$COMMITS" | grep -E "^- fix:" || true)
 TESTS=$(echo "$COMMITS" | grep -E "^- test:" || true)
@@ -24,25 +22,21 @@ DOCS=$(echo "$COMMITS" | grep -E "^- docs:" || true)
 OTHERS=$(echo "$COMMITS" | grep -vE "^- (feat|fix|test|docs|ci|chore):" || true)
 CI=$(echo "$COMMITS" | grep -E "^- (ci|chore):" || true)
 
-# Build summary section.
 SUMMARY=""
 [ -n "$FEATS" ] && SUMMARY="${SUMMARY}${FEATS}\n"
 [ -n "$FIXES" ] && SUMMARY="${SUMMARY}${FIXES}\n"
 [ -n "$OTHERS" ] && SUMMARY="${SUMMARY}${OTHERS}\n"
 
-# Trim trailing newlines.
 SUMMARY=$(echo -e "$SUMMARY" | sed '/^$/d')
 
 if [ -z "$SUMMARY" ]; then
   SUMMARY="$COMMITS"
 fi
 
-# Detect what changed for test plan.
 CHANGED_PKGS=$(git diff "${BASE}..HEAD" --name-only | grep '_test\.go$' | sed 's|/[^/]*$||' | sort -u || true)
 HAS_TESTS=false
 [ -n "$CHANGED_PKGS" ] && HAS_TESTS=true
 
-# Build body.
 BODY=$(cat <<EOF
 ## Summary
 ${SUMMARY}
