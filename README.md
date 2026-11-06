@@ -567,6 +567,14 @@ Issues and pull requests are welcome.
 
 <br/>
 
+## Related projects
+
+- [helios-lb](https://github.com/somaz94/helios-lb): A bare-metal LoadBalancer for Kubernetes, a lightweight MetalLB alternative.
+- [k8s-namespace-sync](https://github.com/somaz94/k8s-namespace-sync): An operator that syncs Secrets and ConfigMaps across namespaces.
+- [kube-drift](https://github.com/somaz94/kube-drift): An operator that runs the same manifest-vs-cluster comparison on a schedule, inside the cluster.
+
+<br/>
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
