@@ -1,6 +1,6 @@
 # Network Policy Generator
 
-> Kubernetes operator that auto-generates NetworkPolicies from observed traffic — learning/enforcing modes with multi-CNI (Kubernetes/Cilium/Calico) support.
+> Kubernetes operator that generates NetworkPolicies for Kubernetes, Cilium or Calico from declarative allow/deny rules and built-in templates, with an optional learning period before enforcement.
 
 ![Top Language](https://img.shields.io/github/languages/top/somaz94/network-policy-generator?color=green&logo=go&logoColor=b)
 ![Version](https://img.shields.io/github/v/tag/somaz94/network-policy-generator?label=version&logo=kubernetes&logoColor=white)
@@ -10,7 +10,7 @@
 ![GitHub Release](https://img.shields.io/github/release/somaz94/network-policy-generator?logo=github)
 ![GitHub Stars](https://img.shields.io/github/stars/somaz94/network-policy-generator?style=social)
 
-A Kubernetes controller that automatically generates and manages Kubernetes Network Policies based on observed traffic patterns and user-defined rules.
+A Kubernetes controller that automatically generates and manages Kubernetes Network Policies based on user-defined rules and templates.
 
 ![A NetworkPolicyGenerator in enforcing mode turns a short deny rule into a NetworkPolicy that admits only frontend, kube-system and port 80](examples/demo/demo.gif)
 
@@ -20,17 +20,15 @@ A Kubernetes controller that automatically generates and manages Kubernetes Netw
 
 The Network Policy Generator is a Kubernetes operator that simplifies the creation and management of Network Policies by providing two main operational modes:
 
-- **Learning Mode**: Analyzes actual network traffic patterns within your cluster for a specified duration
-- **Enforcing Mode**: Automatically generates and applies Network Policies based on learned patterns or predefined rules
+- **Learning Mode**: Holds off enforcement for a specified duration, then switches to enforcing mode. Traffic collection is not implemented yet, so this mode records no traffic and produces no suggestions
+- **Enforcing Mode**: Automatically generates and applies Network Policies based on the configured rules
 
 This tool helps security teams and cluster administrators implement network segmentation more effectively by:
 - Reducing manual Network Policy creation overhead
-- Providing data-driven policy recommendations based on real traffic
 - Supporting both permissive (allow-based) and restrictive (deny-based) policy approaches
 - Enabling gradual transition from learning to enforcement phases
 - Supporting multiple CNI backends via `policyEngine` field (`kubernetes`, `cilium`, `calico`)
 - Providing built-in policy templates for common workload types (web-app, database, monitoring, etc.)
-- Generating namespace and rule suggestions from observed traffic during learning mode
 
 ### Key Features
 
@@ -254,7 +252,7 @@ spec:
 <br/>
 
 ### 3. Learning Mode Example
-Analyzes traffic patterns for a specified duration before generating policies:
+Waits for a specified duration before enforcing policies:
 
 ```yaml
 apiVersion: security.policy.io/v1
@@ -263,7 +261,7 @@ metadata:
   name: traffic-learner
 spec:
   mode: "learning"
-  duration: "1m"      # Analyze traffic for 1 minute (use longer durations in production)
+  duration: "1m"      # Learning period before enforcing (use longer durations in production)
   policy:
     type: "deny"
     allowedNamespaces:
@@ -467,7 +465,7 @@ Templates are merged with user-defined `globalRules` (user rules take precedence
 <br/>
 
 ### 11. Learning Mode with Suggestions
-Learning mode now generates namespace and rule suggestions based on observed traffic:
+The status has fields for namespace and rule suggestions, but they stay empty until traffic collection is implemented:
 
 ```yaml
 apiVersion: security.policy.io/v1
@@ -484,10 +482,10 @@ spec:
 After the learning period, check suggestions:
 
 ```bash
-# View suggested namespaces from observed traffic
+# View suggested namespaces
 kubectl get networkpolicygenerator traffic-learner-improved -o jsonpath='{.status.suggestedNamespaces}'
 
-# View suggested port/protocol rules with observation counts
+# View suggested port/protocol rules
 kubectl get networkpolicygenerator traffic-learner-improved -o jsonpath='{.status.suggestedRules}'
 ```
 
@@ -501,7 +499,7 @@ kubectl get networkpolicygenerator
 # Get detailed information about a specific generator
 kubectl describe networkpolicygenerator <name>
 
-# Check the status and observed traffic (in learning mode)
+# Check the status
 kubectl get networkpolicygenerator <name> -o yaml
 ```
 
@@ -518,7 +516,7 @@ The CRD enforces the following rules at admission time. They are part of the CRD
 | Each `spec.globalRules[*]` sets exactly one of `port` or `namedPort` | `exactly one of port or namedPort must be specified` |
 | A namespace may not appear in both `allowedNamespaces` and `deniedNamespaces` | `a namespace cannot be listed in both allowedNamespaces and deniedNamespaces` |
 
-A zero `duration` in learning mode is rejected because the generator would transition straight to enforcing on the next reconcile, applying policies before any traffic was observed.
+A zero `duration` in learning mode is rejected because the generator would transition straight to enforcing on the next reconcile, applying policies with no learning period.
 
 Enabling the webhook (`--enable-webhooks`) adds checks that the CRD schema cannot express, most notably CIDR-format validation for `spec.cidrRules`.
 
