@@ -179,7 +179,8 @@ type PolicyDiffEntry struct {
 	// Namespace is the namespace of the policy
 	Namespace string `json:"namespace"`
 
-	// Action is the type of change: Created, Updated, Unchanged
+	// Action is the type of change: Created, Updated, Unchanged, or Deleted
+	// (a stale policy from an earlier spec)
 	Action string `json:"action"`
 
 	// Timestamp is when the change was detected

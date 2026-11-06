@@ -60,6 +60,14 @@ const (
 	// Policy naming
 	PolicyNameSuffix = "-generated"
 
+	// Ownership marks stamped on every applied policy. The UID label lets the
+	// controller find its policies in any namespace, where an ownerReference
+	// cannot reach; the annotation names the generator for watch events.
+	LabelManagedBy      = "app.kubernetes.io/managed-by"
+	ManagedByValue      = "network-policy-generator"
+	LabelGeneratorUID   = "security.policy.io/generator-uid"
+	AnnotationGenerator = "security.policy.io/generator"
+
 	// Requeue intervals
 	DefaultRequeueInterval = 5 * time.Minute
 
@@ -67,6 +75,7 @@ const (
 	DiffActionCreated   = "Created"
 	DiffActionUpdated   = "Updated"
 	DiffActionUnchanged = "Unchanged"
+	DiffActionDeleted   = "Deleted"
 )
 
 // PolicyName returns the generated policy name for a generator

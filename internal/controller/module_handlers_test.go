@@ -829,7 +829,7 @@ var _ = Describe("Mode Handlers", func() {
 				Name: generatorName + "-diff-update", Namespace: namespace,
 			}, generator)).To(Succeed())
 
-			// Second apply should be "Updated"
+			// Second apply with the same spec writes nothing
 			_, err = reconciler.handleEnforcingMode(ctx, generator)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -837,6 +837,17 @@ var _ = Describe("Mode Handlers", func() {
 				Name: generatorName + "-diff-update", Namespace: namespace,
 			}, generator)).To(Succeed())
 			Expect(generator.Status.PolicyDiff).NotTo(BeEmpty())
+			Expect(generator.Status.PolicyDiff[0].Action).To(Equal("Unchanged"))
+
+			// A spec change is written and reported as "Updated"
+			generator.Spec.Policy.AllowedNamespaces = append(generator.Spec.Policy.AllowedNamespaces, "test-ns3")
+			Expect(k8sClient.Update(ctx, generator)).To(Succeed())
+			_, err = reconciler.handleEnforcingMode(ctx, generator)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name: generatorName + "-diff-update", Namespace: namespace,
+			}, generator)).To(Succeed())
 			Expect(generator.Status.PolicyDiff[0].Action).To(Equal("Updated"))
 		})
 	})

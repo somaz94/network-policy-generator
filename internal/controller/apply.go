@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -69,25 +70,26 @@ func toUnstructured(obj runtime.Object, gvk schema.GroupVersionKind) (*unstructu
 }
 
 // applyPolicyWithDiff creates or updates a policy object for any supported
-// engine, returning the action performed ("Created" / "Updated").
+// engine, returning the action performed ("Created" / "Updated" / "Unchanged")
+// and the key of the object it wrote.
 func (r *NetworkPolicyGeneratorReconciler) applyPolicyWithDiff(
 	ctx context.Context,
 	g *securityv1.NetworkPolicyGenerator,
 	obj runtime.Object,
 	engineName string,
-) (string, error) {
+) (string, policyKey, error) {
 	u, err := toUnstructured(obj, gvkForEngine(engineName))
 	if err != nil {
-		return "", err
+		return "", policyKey{}, err
 	}
-	u.SetOwnerReferences([]metav1.OwnerReference{ownerReference(g)})
+	stampOwnership(u, g)
 
 	action, err := r.createOrUpdateWithAction(ctx, u)
 	if err != nil {
-		return "", err
+		return "", policyKey{}, err
 	}
 	PolicyOperations.WithLabelValues(action).Inc()
-	return action, nil
+	return action, keyOf(u), nil
 }
 
 // createOrUpdateWithAction issues a Create or Update against the API server
@@ -112,6 +114,9 @@ func (r *NetworkPolicyGeneratorReconciler) createOrUpdateWithAction(
 		return policy.DiffActionCreated, nil
 	}
 
+	if sameManagedContent(existing, u) {
+		return policy.DiffActionUnchanged, nil
+	}
 	u.SetResourceVersion(existing.GetResourceVersion())
 	if err := r.Update(ctx, u); err != nil {
 		return "", err
@@ -132,4 +137,32 @@ func (r *NetworkPolicyGeneratorReconciler) updateStatusAndRequeue(
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{RequeueAfter: policy.DefaultRequeueInterval}, nil
+}
+
+// sameManagedContent reports whether existing already matches desired in the
+// parts the controller owns: spec, ownerReferences, and the labels and
+// annotations desired sets. Skipping a no-op Update keeps the policy watch from
+// re-triggering reconciles and makes "Unchanged" visible in status.policyDiff.
+func sameManagedContent(existing, desired *unstructured.Unstructured) bool {
+	// Compared as JSON: a decoded desired object holds float64 numbers while
+	// one read from the API server holds int64.
+	have, err1 := json.Marshal(existing.Object["spec"])
+	want, err2 := json.Marshal(desired.Object["spec"])
+	if err1 != nil || err2 != nil || string(have) != string(want) {
+		return false
+	}
+	if !equality.Semantic.DeepEqual(existing.GetOwnerReferences(), desired.GetOwnerReferences()) {
+		return false
+	}
+	return containsAll(existing.GetLabels(), desired.GetLabels()) &&
+		containsAll(existing.GetAnnotations(), desired.GetAnnotations())
+}
+
+func containsAll(have, want map[string]string) bool {
+	for k, v := range want {
+		if have[k] != v {
+			return false
+		}
+	}
+	return true
 }

@@ -272,8 +272,9 @@ spec:
                     policy audit
                   properties:
                     action:
-                      description: 'Action is the type of change: Created, Updated,
-                        Unchanged'
+                      description: |-
+                        Action is the type of change: Created, Updated, Unchanged, or Deleted
+                        (a stale policy from an earlier spec)
                       type: string
                     namespace:
                       description: Namespace is the namespace of the policy

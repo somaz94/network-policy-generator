@@ -12,9 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	securityv1 "github.com/somaz94/network-policy-generator/api/v1"
 	"github.com/somaz94/network-policy-generator/internal/policy"
@@ -165,6 +168,13 @@ func (r *NetworkPolicyGeneratorReconciler) handleDeletion(ctx context.Context, g
 			log.Error(err, "failed to delete NetworkPolicies")
 			return ctrl.Result{}, err
 		}
+		// Name-based deletion above only reaches namespaces the current spec
+		// lists; the UID label also finds policies from an earlier spec.
+		if _, err := r.pruneStalePolicies(ctx, generator, nil); err != nil {
+			r.Recorder.Eventf(generator, "Warning", "CleanupFailed", "Failed to delete labeled policies: %v", err)
+			log.Error(err, "failed to delete labeled policies")
+			return ctrl.Result{}, err
+		}
 		r.Recorder.Event(generator, "Normal", "PoliciesDeleted", "All generated NetworkPolicies deleted")
 		PolicyOperations.WithLabelValues("Deleted").Inc()
 		PoliciesApplied.DeleteLabelValues(generator.Name, generator.Namespace, generator.Spec.PolicyEngine)
@@ -240,5 +250,11 @@ func (r *NetworkPolicyGeneratorReconciler) deleteUnstructuredPolicy(ctx context.
 func (r *NetworkPolicyGeneratorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&securityv1.NetworkPolicyGenerator{}).
+		Watches(&networkingv1.NetworkPolicy{},
+			handler.EnqueueRequestsFromMapFunc(generatorForPolicy),
+			builder.WithPredicates(
+				predicate.NewPredicateFuncs(isManagedPolicy),
+				predicate.GenerationChangedPredicate{},
+			)).
 		Complete(r)
 }

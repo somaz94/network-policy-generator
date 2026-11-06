@@ -67,13 +67,14 @@ func (r *NetworkPolicyGeneratorReconciler) handleEnforcing(
 	}
 
 	var diff []securityv1.PolicyDiffEntry
+	keep := make(map[policyKey]bool, len(objects))
 	for _, obj := range objects {
 		accessor, accErr := meta.Accessor(obj)
 		if accErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to access object metadata: %w", accErr)
 		}
 
-		action, applyErr := r.applyPolicyWithDiff(ctx, generator, obj, engine.EngineName())
+		action, key, applyErr := r.applyPolicyWithDiff(ctx, generator, obj, engine.EngineName())
 		if applyErr != nil {
 			r.Recorder.Eventf(generator, "Warning", "ApplyFailed",
 				"Failed to apply %s policy %s/%s: %v",
@@ -85,9 +86,12 @@ func (r *NetworkPolicyGeneratorReconciler) handleEnforcing(
 			return ctrl.Result{}, applyErr
 		}
 
-		r.Recorder.Eventf(generator, "Normal", "Policy"+action,
-			"%s policy %s/%s %s",
-			engine.EngineName(), accessor.GetNamespace(), accessor.GetName(), action)
+		keep[key] = true
+		if action != policy.DiffActionUnchanged {
+			r.Recorder.Eventf(generator, "Normal", "Policy"+action,
+				"%s policy %s/%s %s",
+				engine.EngineName(), accessor.GetNamespace(), accessor.GetName(), action)
+		}
 
 		diff = append(diff, securityv1.PolicyDiffEntry{
 			PolicyName: accessor.GetName(),
@@ -95,6 +99,24 @@ func (r *NetworkPolicyGeneratorReconciler) handleEnforcing(
 			Action:     action,
 			Timestamp:  metav1.Now(),
 		})
+	}
+
+	deleted, pruneErr := r.pruneStalePolicies(ctx, generator, keep)
+	for _, k := range deleted {
+		PolicyOperations.WithLabelValues(policy.DiffActionDeleted).Inc()
+		r.Recorder.Eventf(generator, "Normal", "PolicyDeleted",
+			"stale %s %s/%s deleted", k.gvk.Kind, k.namespace, k.name)
+		diff = append(diff, securityv1.PolicyDiffEntry{
+			PolicyName: k.name,
+			Namespace:  k.namespace,
+			Action:     policy.DiffActionDeleted,
+			Timestamp:  metav1.Now(),
+		})
+	}
+	if pruneErr != nil {
+		r.Recorder.Eventf(generator, "Warning", "PruneFailed", "Failed to delete stale policies: %v", pruneErr)
+		log.Error(pruneErr, "failed to delete stale policies")
+		return ctrl.Result{}, pruneErr
 	}
 
 	generator.Status.PolicyDiff = diff
