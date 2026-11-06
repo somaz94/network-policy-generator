@@ -2,6 +2,70 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.5.0](https://github.com/somaz94/network-policy-generator/compare/v0.4.0...v0.5.0) (2026-11-06)
+
+### Features
+
+- generate globalRules deny for cilium and calico and reject it for the kubernetes engine ([5fd5a44](https://github.com/somaz94/network-policy-generator/commit/5fd5a4478c9dbfd3cdea9a3e8f49f5a3ec997711))
+- add globalRules from scope and limit template ingress to allowed namespaces ([f5a2e87](https://github.com/somaz94/network-policy-generator/commit/f5a2e871bb756899aa8df5997590f7fae72d92a0))
+
+### Bug Fixes
+
+- track generated policies by label instead of cross-namespace owner references and prune stale ones ([daa9aee](https://github.com/somaz94/network-policy-generator/commit/daa9aee959c26eba2c26d47c459174360eef83bd))
+- prevent global rule dedup key collision on surrogate-range ports ([a6a54f5](https://github.com/somaz94/network-policy-generator/commit/a6a54f507942f5eefa322bd294176fad187ef9f8))
+
+### Code Refactoring
+
+- name repeated string literals as constants ([62532ea](https://github.com/somaz94/network-policy-generator/commit/62532ea65eed8ffac01e7f00b7e96aa800725236))
+- preallocate slices with known capacity ([84626c5](https://github.com/somaz94/network-policy-generator/commit/84626c570b176808c90f9712e1371da8279ddca7))
+- split validateGenerator into per-concern validation helpers ([00bfe78](https://github.com/somaz94/network-policy-generator/commit/00bfe7885e07a6725252fa854bd866fa9390a091))
+
+### Documentation
+
+- document globalRules from scope, deny engines and owned cleanup ([0ba783d](https://github.com/somaz94/network-policy-generator/commit/0ba783de198c4fe8674885e0e21f0dbfda3acc7c))
+- align README claims with implemented behavior ([5ddbe88](https://github.com/somaz94/network-policy-generator/commit/5ddbe883ea78c1f8e87e7f52bee561d94cbf99b3))
+- add related projects section to README ([5d20b93](https://github.com/somaz94/network-policy-generator/commit/5d20b93c60925d7b31a0388797fdc4b31817fa99))
+- install the Helm chart without a namespace the controller never uses ([d1e4974](https://github.com/somaz94/network-policy-generator/commit/d1e4974352fe705a96f5623360e92c1eba8d0048))
+- add a demo GIF of a generated NetworkPolicy ([65a3cac](https://github.com/somaz94/network-policy-generator/commit/65a3cac9eed09a3d159f426f48dc6b6e4340359e))
+
+### Tests
+
+- use HaveLen matcher for GlobalRules length assertion ([00c514b](https://github.com/somaz94/network-policy-generator/commit/00c514beefcedd11b9be2faacdc2576fc032c95b))
+
+### Continuous Integration
+
+- deduplicate identical commit lines in release notes ([59ec8f6](https://github.com/somaz94/network-policy-generator/commit/59ec8f6b8bf017888deb50cb99dbcd4b9c3ff398))
+- trim redundant comments in gitlab-mirror workflow ([5688979](https://github.com/somaz94/network-policy-generator/commit/568897915c8b2c3757d2b0f01800af84ca8339f2))
+- retry mirror pushes on transient remote failures ([c5c5d09](https://github.com/somaz94/network-policy-generator/commit/c5c5d09f9a55cccdd8b93d5b5e45001df42c099b))
+- drop the dead issue-close trigger from changelog generation ([91f953c](https://github.com/somaz94/network-policy-generator/commit/91f953cf6e3ab4efafb29fb807d4a7510d3a61c7))
+
+### Chores
+
+- **release:** bump version to v0.5.0 ([47c9ea7](https://github.com/somaz94/network-policy-generator/commit/47c9ea7157ff600c67d7731d16ba6189d539ac03))
+- **deps:** bump the go-minor group with 3 updates (#38) ([#38](https://github.com/somaz94/network-policy-generator/pull/38)) ([b61f1a3](https://github.com/somaz94/network-policy-generator/commit/b61f1a3a686a1cb71d9cd38059825d3d754cbd9b))
+- **deps:** bump the go-minor group with 2 updates (#37) ([#37](https://github.com/somaz94/network-policy-generator/pull/37)) ([9d9e987](https://github.com/somaz94/network-policy-generator/commit/9d9e987538826e2673203777cbc22b564cd24a48))
+- **deps:** bump sigs.k8s.io/controller-runtime (#36) ([#36](https://github.com/somaz94/network-policy-generator/pull/36)) ([7a01956](https://github.com/somaz94/network-policy-generator/commit/7a0195660a5153f30bf1b081284b8cdf204bd4be))
+- base create-pr.sh on origin/main ([83e3d61](https://github.com/somaz94/network-policy-generator/commit/83e3d616998bedee8ad61fb81f7a0de0a9755f76))
+- classify scoped and breaking commits in create-pr.sh ([fc717ff](https://github.com/somaz94/network-policy-generator/commit/fc717ff71d621265cc610fef5fed8318764d69dc))
+- trim boilerplate comments in repo config and scripts ([8547cf3](https://github.com/somaz94/network-policy-generator/commit/8547cf33ac0b6ff6cd09d7c7cdff57e890d488b5))
+- **deps:** bump the go-minor group with 4 updates (#35) ([#35](https://github.com/somaz94/network-policy-generator/pull/35)) ([6bb65dd](https://github.com/somaz94/network-policy-generator/commit/6bb65ddf8bcadecac68d5044dd6eabf5aaf0d65b))
+- **deps:** bump the go-minor group with 3 updates (#34) ([#34](https://github.com/somaz94/network-policy-generator/pull/34)) ([9345776](https://github.com/somaz94/network-policy-generator/commit/934577649fc53b63ef7b60ec3349abe8f9dcfee6))
+- **deps:** bump github.com/onsi/ginkgo/v2 in the go-minor group (#33) ([#33](https://github.com/somaz94/network-policy-generator/pull/33)) ([cf2a209](https://github.com/somaz94/network-policy-generator/commit/cf2a209e65c8ba76d4b006eeccab1de9703a7fd9))
+- **deps:** bump sigs.k8s.io/controller-runtime in the go-minor group (#32) ([#32](https://github.com/somaz94/network-policy-generator/pull/32)) ([29b9e8b](https://github.com/somaz94/network-policy-generator/commit/29b9e8b9ed0432beef6f973fd1faffc03b7a9d17))
+- **deps:** bump the go-minor group with 4 updates (#31) ([#31](https://github.com/somaz94/network-policy-generator/pull/31)) ([354a5a0](https://github.com/somaz94/network-policy-generator/commit/354a5a04fe7d6a4febfcacf7ddcbc9bd2e5d682a))
+- **deps:** bump golang from 1.26 to 1.27 in the docker-minor group (#30) ([#30](https://github.com/somaz94/network-policy-generator/pull/30)) ([69f5449](https://github.com/somaz94/network-policy-generator/commit/69f5449a377dbd4138536c5626b003751644fdf3))
+- **deps:** bump the go-minor group with 4 updates (#29) ([#29](https://github.com/somaz94/network-policy-generator/pull/29)) ([eddbe99](https://github.com/somaz94/network-policy-generator/commit/eddbe99415eedd7d17d41923319dd89123a1e40b))
+- **deps:** bump the go-minor group with 2 updates (#28) ([#28](https://github.com/somaz94/network-policy-generator/pull/28)) ([bc5a708](https://github.com/somaz94/network-policy-generator/commit/bc5a708ca74525f0c927f6fe59fca7cfd532dbe1))
+- fix comment-spacings and extract repeated literals into constants ([cb69ede](https://github.com/somaz94/network-policy-generator/commit/cb69edef236015eec880ed664216ce4416b451a0))
+- **deps:** bump the go-minor group with 4 updates (#27) ([#27](https://github.com/somaz94/network-policy-generator/pull/27)) ([086217c](https://github.com/somaz94/network-policy-generator/commit/086217c369a9431a36e3c1296bac783354b2f73e))
+- resolve golangci-lint errcheck, ineffassign, staticcheck and unconvert findings ([f29c780](https://github.com/somaz94/network-policy-generator/commit/f29c7805195db69392e1c3df3a244c78b86ca0af))
+
+### Contributors
+
+- somaz
+
+<br/>
+
 ## [v0.4.0](https://github.com/somaz94/network-policy-generator/compare/v0.3.0...v0.4.0) (2026-07-29)
 
 ### Features
