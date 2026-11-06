@@ -108,6 +108,19 @@ spec:
                       - ingress
                       - egress
                       type: string
+                    from:
+                      default: anywhere
+                      description: |-
+                        From limits the peers the rule admits (ingress) or reaches (egress).
+                        "anywhere" matches every source or destination, inside the cluster or
+                        not. "allowedNamespaces" matches pods in spec.policy.allowedNamespaces,
+                        or only the policy's own namespace when that list is empty.
+                        "sameNamespace" matches pods in the policy's own namespace.
+                      enum:
+                      - anywhere
+                      - allowedNamespaces
+                      - sameNamespace
+                      type: string
                     namedPort:
                       description: NamedPort is the port name (e.g., "http", "grpc")
                         as an alternative to numeric port
@@ -126,7 +139,9 @@ spec:
                       - UDP
                       type: string
                     type:
-                      description: Type defines whether to allow or deny this rule
+                      description: |-
+                        Type defines whether to allow or deny this rule. Deny needs policyEngine
+                        cilium or calico, where it takes precedence over allow rules.
                       enum:
                       - allow
                       - deny
@@ -225,6 +240,10 @@ spec:
                 'learning'
               rule: self.mode != 'learning' || (has(self.duration) && duration(self.duration)
                 > duration('0s'))
+            - message: globalRules of type deny need policyEngine cilium or calico;
+                a Kubernetes NetworkPolicy can only allow
+              rule: '!has(self.globalRules) || (has(self.policyEngine) && self.policyEngine
+                != ''kubernetes'') || self.globalRules.all(r, r.type == ''allow'')'
           status:
             description: NetworkPolicyGeneratorStatus defines the observed state of
               NetworkPolicyGenerator
@@ -280,8 +299,9 @@ spec:
                     policy audit
                   properties:
                     action:
-                      description: 'Action is the type of change: Created, Updated,
-                        Unchanged'
+                      description: |-
+                        Action is the type of change: Created, Updated, Unchanged, or Deleted
+                        (a stale policy from an earlier spec)
                       type: string
                     namespace:
                       description: Namespace is the namespace of the policy
@@ -634,7 +654,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: somaz940/network-policy-generator:v0.4.0
+        image: somaz940/network-policy-generator:v0.5.0
         livenessProbe:
           httpGet:
             path: /healthz

@@ -78,7 +78,7 @@ This tool helps security teams and cluster administrators implement network segm
 ```bash
 # Single-command install — no helm repo add needed
 helm install npg oci://ghcr.io/somaz94/charts/network-policy-generator \
-  --version 0.4.0
+  --version 0.5.0
 ```
 
 The chart creates the namespace named by its `namespace` value (`network-policy-generator-system` unless you change it) and deploys the controller there, whatever `--namespace` says, so install it without `--namespace` and `--create-namespace`.
@@ -95,7 +95,7 @@ helm install npg network-policy-generator/network-policy-generator
 
 # Or install with custom values
 helm install npg network-policy-generator/network-policy-generator \
-  --set image.tag=v0.4.0 \
+  --set image.tag=v0.5.0 \
   --set crds.cleanup=false
 ```
 
@@ -122,7 +122,7 @@ cd network-policy-generator
 make install
 
 # Deploy the controller
-make deploy IMG=somaz940/network-policy-generator:v0.4.0
+make deploy IMG=somaz940/network-policy-generator:v0.5.0
 ```
 
 <br/>
