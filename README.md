@@ -12,6 +12,8 @@
 
 A Kubernetes controller that automatically generates and manages Kubernetes Network Policies based on observed traffic patterns and user-defined rules.
 
+![A NetworkPolicyGenerator in enforcing mode turns a short deny rule into a NetworkPolicy that admits only frontend, kube-system and port 80](examples/demo/demo.gif)
+
 <br/>
 
 ## Description

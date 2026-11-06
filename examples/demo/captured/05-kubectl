@@ -1,0 +1,30 @@
+Name:         shop-lockdown-generated
+Namespace:    shop
+Created on:   2026-11-06 12:50:18 +0900 KST
+Labels:       <none>
+Annotations:  <none>
+Spec:
+  PodSelector:     <none> (Allowing the specific traffic to all pods in this namespace)
+  Allowing ingress traffic:
+    To Port: <any> (traffic allowed to all ports)
+    From:
+      NamespaceSelector: kubernetes.io/metadata.name=frontend
+    From:
+      NamespaceSelector: kubernetes.io/metadata.name=kube-system
+    ----------
+    To Port: 80/TCP
+    From:
+      IPBlock:
+        CIDR: 0.0.0.0/0
+        Except: 
+  Allowing egress traffic:
+    To Port: <any> (traffic allowed to all ports)
+    To:
+      NamespaceSelector: kubernetes.io/metadata.name=frontend
+    To:
+      NamespaceSelector: kubernetes.io/metadata.name=kube-system
+    ----------
+    To Port: 53/UDP
+    To Port: 53/TCP
+    To: <any> (traffic not restricted by destination)
+  Policy Types: Ingress, Egress

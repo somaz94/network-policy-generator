@@ -10,6 +10,7 @@ Guide for building, testing, and contributing to network-policy-generator.
 - [Project Structure](#project-structure)
 - [Build](#build)
 - [Testing](#testing)
+- [Demo](#demo)
 - [Docker](#docker)
 - [Workflow](#workflow)
 - [CI/CD Workflows](#cicd-workflows)
@@ -113,6 +114,17 @@ make test-e2e             # E2E tests on Kind cluster
 make test-integration     # Integration tests (ENGINE=auto|kubernetes|cilium|calico|all)
 make test-helm            # Helm chart tests (lint, install, sync, uninstall)
 make lint                 # Run golangci-lint
+```
+
+<br/>
+
+## Demo
+
+The GIF in the README replays output saved from a real run, because the recording container has no cluster. `capture.sh` creates a kind cluster named `npg-demo` with its own kubeconfig, installs the chart in `helm/network-policy-generator` with its published image, applies the generator in `examples/demo/`, and deletes the cluster on exit. When the output changes, regenerate both:
+
+```bash
+examples/demo/capture.sh
+docker run --rm -v "$PWD:/vhs" ghcr.io/charmbracelet/vhs examples/demo/demo.tape
 ```
 
 <br/>

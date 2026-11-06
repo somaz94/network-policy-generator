@@ -1,0 +1,23 @@
+# Demo: deny everything into shop except frontend and kube-system, keep port 80 open.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frontend
+---
+apiVersion: security.policy.io/v1
+kind: NetworkPolicyGenerator
+metadata:
+  name: shop-lockdown
+  namespace: shop
+spec:
+  mode: enforcing
+  policy:
+    type: deny
+    allowedNamespaces:
+      - frontend
+      - kube-system
+  globalRules:
+    - type: allow
+      port: 80
+      protocol: TCP
+      direction: ingress
