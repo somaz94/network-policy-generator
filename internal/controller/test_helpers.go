@@ -71,7 +71,7 @@ func createBasicGenerator(namespace, name string) *securityv1.NetworkPolicyGener
 					Direction: policy.DirectionIngress,
 				},
 				{
-					Type:      policy.PolicyTypeDeny,
+					Type:      policy.PolicyTypeAllow,
 					Port:      25,
 					Protocol:  policy.ProtocolTCP,
 					Direction: policy.DirectionEgress,

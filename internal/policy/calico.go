@@ -134,6 +134,10 @@ func (e *CalicoEngine) applyGlobalRules(policies []runtime.Object, generator *se
 				Action:   CalicoActionAllow,
 				Protocol: rule.Protocol,
 			}
+			deny := rule.Type == PolicyTypeDeny
+			if deny {
+				calicoRule.Action = CalicoActionDeny
+			}
 			ports := []interface{}{calicoGlobalRulePort(rule)}
 			var peer *CalicoEntityRule
 			if scope := resolveScope(rule, generator, calicoPolicy.Namespace); !scope.anywhere {
@@ -144,17 +148,26 @@ func (e *CalicoEngine) applyGlobalRules(policies []runtime.Object, generator *se
 			case DirectionIngress:
 				calicoRule.Source = peer
 				calicoRule.Destination = &CalicoEntityRule{Ports: ports}
-				calicoPolicy.Spec.Ingress = append(calicoPolicy.Spec.Ingress, calicoRule)
+				calicoPolicy.Spec.Ingress = addCalicoRule(calicoPolicy.Spec.Ingress, calicoRule, deny)
 			case DirectionEgress:
 				dest := &CalicoEntityRule{Ports: ports}
 				if peer != nil {
 					dest.NamespaceSelector = peer.NamespaceSelector
 				}
 				calicoRule.Destination = dest
-				calicoPolicy.Spec.Egress = append(calicoPolicy.Spec.Egress, calicoRule)
+				calicoPolicy.Spec.Egress = addCalicoRule(calicoPolicy.Spec.Egress, calicoRule, deny)
 			}
 		}
 	}
+}
+
+// addCalicoRule appends an allow rule, or puts a deny rule ahead of every rule
+// already present: Calico stops at the first rule that matches.
+func addCalicoRule(rules []CalicoRule, rule CalicoRule, deny bool) []CalicoRule {
+	if !deny {
+		return append(rules, rule)
+	}
+	return append([]CalicoRule{rule}, rules...)
 }
 
 // applyCIDRRules adds CIDR-based rules to all Calico policies

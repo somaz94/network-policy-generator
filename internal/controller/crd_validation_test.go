@@ -188,4 +188,34 @@ var _ = Describe("NetworkPolicyGenerator CRD validation", func() {
 			}, time.Second*10, time.Millisecond*250).Should(Succeed())
 		})
 	})
+
+	Context("globalRules of type deny", func() {
+		denyRule := securityv1.GlobalRule{
+			Type: policy.PolicyTypeDeny, Port: 25, Protocol: policy.ProtocolTCP, Direction: policy.DirectionEgress,
+		}
+
+		It("rejects deny on the kubernetes engine, which cannot express it", func() {
+			gen := newGenerator("deny-kubernetes")
+			gen.Spec.GlobalRules = []securityv1.GlobalRule{denyRule}
+			err := k8sClient.Create(ctx, gen)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("need policyEngine cilium or calico"))
+		})
+
+		It("accepts deny on the cilium engine", func() {
+			gen := newGenerator("deny-cilium")
+			gen.Spec.PolicyEngine = policy.EngineCilium
+			gen.Spec.GlobalRules = []securityv1.GlobalRule{denyRule}
+			Expect(k8sClient.Create(ctx, gen)).To(Succeed())
+		})
+
+		It("defaults from to anywhere", func() {
+			gen := newGenerator("from-default")
+			gen.Spec.GlobalRules = []securityv1.GlobalRule{{
+				Type: policy.PolicyTypeAllow, Port: 80, Protocol: policy.ProtocolTCP, Direction: policy.DirectionIngress,
+			}}
+			Expect(k8sClient.Create(ctx, gen)).To(Succeed())
+			Expect(gen.Spec.GlobalRules[0].From).To(Equal(policy.FromAnywhere))
+		})
+	})
 })

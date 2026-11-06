@@ -161,6 +161,11 @@ func globalRulePort(rule securityv1.GlobalRule) intstr.IntOrString {
 func (e *KubernetesEngine) applyGlobalRules(policies []*networkingv1.NetworkPolicy, generator *securityv1.NetworkPolicyGenerator) {
 	for _, p := range policies {
 		for _, rule := range generator.Spec.GlobalRules {
+			// NetworkPolicy has no deny; admission rejects these, so only an
+			// object stored before that rule existed can still carry one.
+			if rule.Type == PolicyTypeDeny {
+				continue
+			}
 			port := globalRulePort(rule)
 			ports := []networkingv1.NetworkPolicyPort{{
 				Protocol: (*v1.Protocol)(&rule.Protocol),

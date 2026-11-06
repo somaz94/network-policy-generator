@@ -22,6 +22,7 @@ import (
 
 // NetworkPolicyGeneratorSpec defines the desired state of NetworkPolicyGenerator
 // +kubebuilder:validation:XValidation:rule="self.mode != 'learning' || (has(self.duration) && duration(self.duration) > duration('0s'))",message="spec.duration is required and must be positive when mode is 'learning'"
+// +kubebuilder:validation:XValidation:rule="!has(self.globalRules) || (has(self.policyEngine) && self.policyEngine != 'kubernetes') || self.globalRules.all(r, r.type == 'allow')",message="globalRules of type deny need policyEngine cilium or calico; a Kubernetes NetworkPolicy can only allow"
 type NetworkPolicyGeneratorSpec struct {
 	// Mode specifies the operation mode: "learning" or "enforcing".
 	// Defaults to "learning" so an omitted mode observes traffic instead of
@@ -101,7 +102,8 @@ type PolicyConfig struct {
 // GlobalRule defines a single traffic rule
 // +kubebuilder:validation:XValidation:rule="has(self.port) != has(self.namedPort)",message="exactly one of port or namedPort must be specified"
 type GlobalRule struct {
-	// Type defines whether to allow or deny this rule
+	// Type defines whether to allow or deny this rule. Deny needs policyEngine
+	// cilium or calico, where it takes precedence over allow rules.
 	// +kubebuilder:validation:Enum=allow;deny
 	Type string `json:"type"`
 

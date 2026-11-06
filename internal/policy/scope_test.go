@@ -90,3 +90,46 @@ func TestDatabaseTemplateScopesIngressToAllowedNamespaces(t *testing.T) {
 		}
 	}
 }
+
+func denyGenerator(engine string) *securityv1.NetworkPolicyGenerator {
+	gen := scopedGenerator(engine, []string{labelApp}, FromAnywhere)
+	gen.Spec.GlobalRules = append(gen.Spec.GlobalRules, securityv1.GlobalRule{
+		Type: PolicyTypeDeny, Port: 25, Protocol: ProtocolTCP, Direction: DirectionEgress,
+	})
+	return gen
+}
+
+func TestKubernetesSkipsDenyRules(t *testing.T) {
+	policies, err := NewKubernetesEngine().generateK8sPolicies(denyGenerator(EngineKubernetes))
+	require.NoError(t, err)
+	for _, rule := range policies[0].Spec.Egress {
+		for _, p := range rule.Ports {
+			assert.NotEqual(t, int32(25), p.Port.IntVal, "a deny rule must never become an allow")
+		}
+	}
+}
+
+func TestCiliumDenyRules(t *testing.T) {
+	objects, err := NewCiliumEngine().GeneratePolicies(denyGenerator(EngineCilium))
+	require.NoError(t, err)
+	p := objects[0].(*CiliumNetworkPolicy)
+	require.Len(t, p.Spec.EgressDeny, 1)
+	assert.Equal(t, "25", p.Spec.EgressDeny[0].ToPorts[0].Ports[0].Port)
+	for _, rule := range p.Spec.Egress {
+		for _, pr := range rule.ToPorts {
+			assert.NotEqual(t, "25", pr.Ports[0].Port)
+		}
+	}
+}
+
+func TestCalicoDenyRulesComeFirst(t *testing.T) {
+	objects, err := NewCalicoEngine().GeneratePolicies(denyGenerator(EngineCalico))
+	require.NoError(t, err)
+	p := objects[0].(*CalicoNetworkPolicy)
+	require.NotEmpty(t, p.Spec.Egress)
+	assert.Equal(t, CalicoActionDeny, p.Spec.Egress[0].Action, "Calico stops at the first match, so deny goes first")
+	assert.Equal(t, []interface{}{"25"}, p.Spec.Egress[0].Destination.Ports)
+	for _, rule := range p.Spec.Egress[1:] {
+		assert.Equal(t, CalicoActionAllow, rule.Action)
+	}
+}

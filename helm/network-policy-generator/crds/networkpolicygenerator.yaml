@@ -131,7 +131,9 @@ spec:
                       - UDP
                       type: string
                     type:
-                      description: Type defines whether to allow or deny this rule
+                      description: |-
+                        Type defines whether to allow or deny this rule. Deny needs policyEngine
+                        cilium or calico, where it takes precedence over allow rules.
                       enum:
                       - allow
                       - deny
@@ -230,6 +232,10 @@ spec:
                 'learning'
               rule: self.mode != 'learning' || (has(self.duration) && duration(self.duration)
                 > duration('0s'))
+            - message: globalRules of type deny need policyEngine cilium or calico;
+                a Kubernetes NetworkPolicy can only allow
+              rule: '!has(self.globalRules) || (has(self.policyEngine) && self.policyEngine
+                != ''kubernetes'') || self.globalRules.all(r, r.type == ''allow'')'
           status:
             description: NetworkPolicyGeneratorStatus defines the observed state of
               NetworkPolicyGenerator

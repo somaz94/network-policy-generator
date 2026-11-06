@@ -113,9 +113,10 @@ func ciliumGlobalRulePort(rule securityv1.GlobalRule) string {
 	return strconv.Itoa(int(rule.Port))
 }
 
-// applyGlobalRules adds global rules to all policies. Anywhere is the "all"
-// entity: "world" would leave out every in-cluster peer, unlike the other
-// engines.
+// applyGlobalRules adds global rules to all policies; deny rules go to
+// ingressDeny/egressDeny, which Cilium applies before any allow. Anywhere is
+// the "all" entity: "world" would leave out every in-cluster peer, unlike the
+// other engines.
 func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, generator *securityv1.NetworkPolicyGenerator) {
 	for _, obj := range policies {
 		ciliumPolicy := obj.(*CiliumNetworkPolicy)
@@ -135,7 +136,11 @@ func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, generator *se
 				} else {
 					in.FromEndpoints = buildCiliumNamespaceSelectors(scope.namespaces)
 				}
-				ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, in)
+				if rule.Type == PolicyTypeDeny {
+					ciliumPolicy.Spec.IngressDeny = append(ciliumPolicy.Spec.IngressDeny, in)
+				} else {
+					ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, in)
+				}
 			case DirectionEgress:
 				out := CiliumEgressRule{ToPorts: []CiliumPortRule{portRule}}
 				if scope.anywhere {
@@ -143,7 +148,11 @@ func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, generator *se
 				} else {
 					out.ToEndpoints = buildCiliumNamespaceSelectors(scope.namespaces)
 				}
-				ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, out)
+				if rule.Type == PolicyTypeDeny {
+					ciliumPolicy.Spec.EgressDeny = append(ciliumPolicy.Spec.EgressDeny, out)
+				} else {
+					ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, out)
+				}
 			}
 		}
 	}
