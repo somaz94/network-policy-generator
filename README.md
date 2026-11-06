@@ -50,7 +50,8 @@ This tool helps security teams and cluster administrators implement network segm
 - **CIDR-based Rules** — Define ingress/egress rules for external IP ranges (e.g., databases, external APIs)
 - **Named Port Support** — Use service port names (`http`, `grpc`) instead of numeric ports
 - **Dry Run Mode** — Preview generated policies in status without applying them to the cluster
-- **Policy Diff/Audit** — Track policy changes (Created/Updated) in status for audit trails
+- **Policy Diff/Audit** — Track policy changes (Created/Updated/Unchanged, and Deleted for a policy the spec no longer needs) in status for audit trails
+- **Owned cleanup** — Every generated policy carries `app.kubernetes.io/managed-by: network-policy-generator` and a `security.policy.io/generator-uid` label, so policies left behind by an earlier spec (a dropped namespace, a different engine) are deleted, and editing or deleting a generated policy by hand is corrected right away
 - **Event Recording** — Emit Kubernetes Events on policy apply, delete, mode transition, and errors
 - **Prometheus Metrics** — Custom metrics for reconcile count, duration, active generators, and policy operations
 - **Schema Validation** — Core spec rules are enforced by the CRD itself (CEL `x-kubernetes-validations`), so they apply on every cluster with no extra setup
@@ -456,11 +457,23 @@ Available templates:
 |----------|-------------|
 | `zero-trust` | Deny all traffic, allow only DNS egress |
 | `web-app` | Allow HTTP/HTTPS ingress, DNS and HTTPS egress |
-| `backend-api` | Allow API ports (8080, 8443, 9090) ingress, HTTPS egress |
-| `database` | Allow DB ports (3306, 5432, 6379, 27017) ingress, DNS-only egress |
-| `monitoring` | Allow Prometheus scraping (9090, 9100), HTTPS egress |
+| `backend-api` | Allow API ports (8080, 8443, 9090) ingress from `allowedNamespaces`, HTTPS egress |
+| `database` | Allow DB ports (3306, 5432, 6379, 27017) ingress from `allowedNamespaces`, DNS-only egress |
+| `monitoring` | Allow Prometheus scraping (9090, 9100) from `allowedNamespaces`, HTTPS egress |
 
-Templates are merged with user-defined `globalRules` (user rules take precedence over template rules).
+Templates are merged with user-defined `globalRules` (user rules take precedence over template rules). The `web-app` ingress rules stay open to `anywhere`; the other templates' ingress rules use `from: allowedNamespaces`, so a database port is not exposed to every pod and external client.
+
+#### `globalRules` fields
+
+Each rule sets `type`, `port` or `namedPort`, `protocol` and `direction`, plus an optional `from`:
+
+| `from` | Ingress admits / egress reaches |
+|---|---|
+| `anywhere` (default) | Every source or destination, in the cluster or outside it |
+| `allowedNamespaces` | Pods in `spec.policy.allowedNamespaces`, or only the policy's own namespace when that list is empty |
+| `sameNamespace` | Pods in the policy's own namespace |
+
+`type: deny` needs `policyEngine: cilium` or `calico`. Cilium writes it to `ingressDeny`/`egressDeny`, and Calico places it ahead of the allow rules; both apply it before any allow. A standard Kubernetes NetworkPolicy cannot deny, so the CRD rejects a deny rule on the `kubernetes` engine.
 
 <br/>
 
@@ -515,6 +528,8 @@ The CRD enforces the following rules at admission time. They are part of the CRD
 | `spec.duration` must be positive when `spec.mode` is `learning` | `spec.duration is required and must be positive when mode is 'learning'` |
 | Each `spec.globalRules[*]` sets exactly one of `port` or `namedPort` | `exactly one of port or namedPort must be specified` |
 | A namespace may not appear in both `allowedNamespaces` and `deniedNamespaces` | `a namespace cannot be listed in both allowedNamespaces and deniedNamespaces` |
+| `spec.globalRules[*].type: deny` only with `policyEngine` `cilium` or `calico` | `globalRules of type deny need policyEngine cilium or calico; a Kubernetes NetworkPolicy can only allow` |
+| `spec.globalRules[*].from` defaults to `anywhere` when omitted | — |
 
 A zero `duration` in learning mode is rejected because the generator would transition straight to enforcing on the next reconcile, applying policies with no learning period.
 
