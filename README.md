@@ -79,9 +79,10 @@ This tool helps security teams and cluster administrators implement network segm
 ```bash
 # Single-command install — no helm repo add needed
 helm install npg oci://ghcr.io/somaz94/charts/network-policy-generator \
-  --version 0.4.0 \
-  --namespace npg-system --create-namespace
+  --version 0.4.0
 ```
+
+The chart creates the namespace named by its `namespace` value (`network-policy-generator-system` unless you change it) and deploys the controller there, whatever `--namespace` says, so install it without `--namespace` and `--create-namespace`.
 
 **Alternative: classic Helm repo**
 
@@ -96,8 +97,7 @@ helm install npg network-policy-generator/network-policy-generator
 # Or install with custom values
 helm install npg network-policy-generator/network-policy-generator \
   --set image.tag=v0.4.0 \
-  --set crds.cleanup=false \
-  --namespace npg-system --create-namespace
+  --set crds.cleanup=false
 ```
 
 For full Helm chart options, see [Helm README](docs/HELM.md).
