@@ -50,38 +50,38 @@ var Templates = map[string]PolicyTemplate{
 	},
 	TemplateBackendAPI: {
 		Name:        TemplateBackendAPI,
-		Description: "Allow ingress on common API ports (8080, 8443, 9090), restrict egress to DNS and HTTPS.",
+		Description: "Allow ingress on common API ports (8080, 8443, 9090) from the allowed namespaces, restrict egress to DNS and HTTPS.",
 		Apply: func(spec *securityv1.NetworkPolicyGeneratorSpec) {
 			spec.Policy.Type = PolicyTypeDeny
 			spec.GlobalRules = mergeGlobalRules(spec.GlobalRules,
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 8080, Protocol: ProtocolTCP, Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 8443, Protocol: ProtocolTCP, Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9090, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 8080, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 8443, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9090, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
 				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 443, Protocol: ProtocolTCP, Direction: DirectionEgress},
 			)
 		},
 	},
 	TemplateDatabase: {
 		Name:        TemplateDatabase,
-		Description: "Allow ingress only on database ports (3306, 5432, 6379, 27017), deny all egress except DNS.",
+		Description: "Allow ingress only on database ports (3306, 5432, 6379, 27017) from the allowed namespaces, deny all egress except DNS.",
 		Apply: func(spec *securityv1.NetworkPolicyGeneratorSpec) {
 			spec.Policy.Type = PolicyTypeDeny
 			spec.GlobalRules = mergeGlobalRules(spec.GlobalRules,
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 3306, Protocol: ProtocolTCP, Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 5432, Protocol: ProtocolTCP, Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 6379, Protocol: ProtocolTCP, Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 27017, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 3306, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 5432, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 6379, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 27017, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
 			)
 		},
 	},
 	TemplateMonitoring: {
 		Name:        TemplateMonitoring,
-		Description: "Allow Prometheus scraping (9090, 9100) and common monitoring ports. Suitable for observability stacks.",
+		Description: "Allow Prometheus scraping (9090, 9100) from the allowed namespaces and common monitoring egress. Suitable for observability stacks.",
 		Apply: func(spec *securityv1.NetworkPolicyGeneratorSpec) {
 			spec.Policy.Type = PolicyTypeDeny
 			spec.GlobalRules = mergeGlobalRules(spec.GlobalRules,
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9090, Protocol: ProtocolTCP, Direction: DirectionIngress},
-				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9100, Protocol: ProtocolTCP, Direction: DirectionIngress},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9090, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
+				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9100, Protocol: ProtocolTCP, Direction: DirectionIngress, From: FromAllowedNamespaces},
 				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 9090, Protocol: ProtocolTCP, Direction: DirectionEgress},
 				securityv1.GlobalRule{Type: PolicyTypeAllow, Port: 443, Protocol: ProtocolTCP, Direction: DirectionEgress},
 			)

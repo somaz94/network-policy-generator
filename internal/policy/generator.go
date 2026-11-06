@@ -70,7 +70,7 @@ func (e *KubernetesEngine) generateK8sPolicies(generator *securityv1.NetworkPoli
 	}
 
 	// Apply global rules
-	e.applyGlobalRules(policies, generator.Spec.GlobalRules)
+	e.applyGlobalRules(policies, generator)
 
 	// Apply CIDR rules
 	e.applyCIDRRules(policies, generator.Spec.CIDRRules)
@@ -155,39 +155,38 @@ func globalRulePort(rule securityv1.GlobalRule) intstr.IntOrString {
 	return intstr.FromInt32(rule.Port)
 }
 
-// applyGlobalRules adds global rules to all policies
-func (e *KubernetesEngine) applyGlobalRules(policies []*networkingv1.NetworkPolicy, globalRules []securityv1.GlobalRule) {
-	if globalRules == nil {
-		return
-	}
-
+// applyGlobalRules adds global rules to all policies. A rule open to anywhere
+// lists no peers, which a NetworkPolicy reads as every source or destination;
+// an ipBlock of 0.0.0.0/0 would miss IPv6 and, on some CNIs, in-cluster pods.
+func (e *KubernetesEngine) applyGlobalRules(policies []*networkingv1.NetworkPolicy, generator *securityv1.NetworkPolicyGenerator) {
 	for _, p := range policies {
-		for _, rule := range globalRules {
+		for _, rule := range generator.Spec.GlobalRules {
 			port := globalRulePort(rule)
+			ports := []networkingv1.NetworkPolicyPort{{
+				Protocol: (*v1.Protocol)(&rule.Protocol),
+				Port:     &port,
+			}}
+			peers := k8sScopePeers(resolveScope(rule, generator, p.Namespace))
 			switch rule.Direction {
 			case DirectionIngress:
-				p.Spec.Ingress = append(p.Spec.Ingress, networkingv1.NetworkPolicyIngressRule{
-					Ports: []networkingv1.NetworkPolicyPort{{
-						Protocol: (*v1.Protocol)(&rule.Protocol),
-						Port:     &port,
-					}},
-					From: []networkingv1.NetworkPolicyPeer{{
-						IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},
-					}},
-				})
+				p.Spec.Ingress = append(p.Spec.Ingress, networkingv1.NetworkPolicyIngressRule{Ports: ports, From: peers})
 			case DirectionEgress:
-				p.Spec.Egress = append(p.Spec.Egress, networkingv1.NetworkPolicyEgressRule{
-					Ports: []networkingv1.NetworkPolicyPort{{
-						Protocol: (*v1.Protocol)(&rule.Protocol),
-						Port:     &port,
-					}},
-					To: []networkingv1.NetworkPolicyPeer{{
-						IPBlock: &networkingv1.IPBlock{CIDR: CIDRAllTraffic},
-					}},
-				})
+				p.Spec.Egress = append(p.Spec.Egress, networkingv1.NetworkPolicyEgressRule{Ports: ports, To: peers})
 			}
 		}
 	}
+}
+
+// k8sScopePeers returns the NetworkPolicy peers for scope; nil means anywhere.
+func k8sScopePeers(scope ruleScope) []networkingv1.NetworkPolicyPeer {
+	if scope.anywhere {
+		return nil
+	}
+	peers := make([]networkingv1.NetworkPolicyPeer, len(scope.namespaces))
+	for i, ns := range scope.namespaces {
+		peers[i] = namespacePeer(ns)
+	}
+	return peers
 }
 
 // applyCIDRRules adds CIDR-based rules to all policies

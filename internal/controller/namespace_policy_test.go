@@ -96,7 +96,7 @@ var _ = Describe("Namespace Policy Tests", func() {
 
 			// Verify global rules
 			Expect(networkPolicy.Spec.Ingress[1].Ports).To(HaveLen(1))
-			Expect(networkPolicy.Spec.Ingress[1].From[0].IPBlock.CIDR).To(Equal("0.0.0.0/0"))
+			Expect(networkPolicy.Spec.Ingress[1].From).To(BeEmpty(), "a rule open to anywhere lists no peers")
 		})
 	})
 })

@@ -138,7 +138,7 @@ func TestCiliumEngine(t *testing.T) {
 		policy := objects[0].(*CiliumNetworkPolicy)
 		// 1 global ingress rule
 		require.Len(t, policy.Spec.Ingress, 1)
-		assert.Contains(t, policy.Spec.Ingress[0].FromEntities, "world")
+		assert.Equal(t, []string{EntityAll}, policy.Spec.Ingress[0].FromEntities, "anywhere covers in-cluster peers too")
 		assert.Equal(t, "80", policy.Spec.Ingress[0].ToPorts[0].Ports[0].Port)
 		assert.Equal(t, ProtocolTCP, policy.Spec.Ingress[0].ToPorts[0].Ports[0].Protocol)
 

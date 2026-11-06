@@ -41,8 +41,14 @@ const (
 	EngineCilium     = "cilium"
 	EngineCalico     = "calico"
 
+	// GlobalRule from scopes; an empty value means anywhere.
+	FromAnywhere          = "anywhere"
+	FromAllowedNamespaces = "allowedNamespaces"
+	FromSameNamespace     = "sameNamespace"
+
 	// Cilium-specific
 	EntityWorld      = "world"
+	EntityAll        = "all"
 	CiliumAPIVersion = "cilium.io/v2"
 	CiliumKind       = "CiliumNetworkPolicy"
 	CiliumGroup      = "cilium.io"

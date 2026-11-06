@@ -60,7 +60,7 @@ func (e *CiliumEngine) GeneratePolicies(generator *securityv1.NetworkPolicyGener
 		policies = e.generateDenyPolicies(basePolicy, generator)
 	}
 
-	e.applyGlobalRules(policies, generator.Spec.GlobalRules)
+	e.applyGlobalRules(policies, generator)
 	e.applyCIDRRules(policies, generator.Spec.CIDRRules)
 
 	return policies, nil
@@ -113,32 +113,37 @@ func ciliumGlobalRulePort(rule securityv1.GlobalRule) string {
 	return strconv.Itoa(int(rule.Port))
 }
 
-// applyGlobalRules adds global rules to all policies
-func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, globalRules []securityv1.GlobalRule) {
-	if globalRules == nil {
-		return
-	}
-
+// applyGlobalRules adds global rules to all policies. Anywhere is the "all"
+// entity: "world" would leave out every in-cluster peer, unlike the other
+// engines.
+func (e *CiliumEngine) applyGlobalRules(policies []runtime.Object, generator *securityv1.NetworkPolicyGenerator) {
 	for _, obj := range policies {
 		ciliumPolicy := obj.(*CiliumNetworkPolicy)
-		for _, rule := range globalRules {
+		for _, rule := range generator.Spec.GlobalRules {
 			portRule := CiliumPortRule{
 				Ports: []CiliumPort{{
 					Port:     ciliumGlobalRulePort(rule),
 					Protocol: rule.Protocol,
 				}},
 			}
+			scope := resolveScope(rule, generator, ciliumPolicy.Namespace)
 			switch rule.Direction {
 			case DirectionIngress:
-				ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, CiliumIngressRule{
-					FromEntities: []string{EntityWorld},
-					ToPorts:      []CiliumPortRule{portRule},
-				})
+				in := CiliumIngressRule{ToPorts: []CiliumPortRule{portRule}}
+				if scope.anywhere {
+					in.FromEntities = []string{EntityAll}
+				} else {
+					in.FromEndpoints = buildCiliumNamespaceSelectors(scope.namespaces)
+				}
+				ciliumPolicy.Spec.Ingress = append(ciliumPolicy.Spec.Ingress, in)
 			case DirectionEgress:
-				ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, CiliumEgressRule{
-					ToEntities: []string{EntityWorld},
-					ToPorts:    []CiliumPortRule{portRule},
-				})
+				out := CiliumEgressRule{ToPorts: []CiliumPortRule{portRule}}
+				if scope.anywhere {
+					out.ToEntities = []string{EntityAll}
+				} else {
+					out.ToEndpoints = buildCiliumNamespaceSelectors(scope.namespaces)
+				}
+				ciliumPolicy.Spec.Egress = append(ciliumPolicy.Spec.Egress, out)
 			}
 		}
 	}

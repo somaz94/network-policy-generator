@@ -70,7 +70,7 @@ func (e *CalicoEngine) GeneratePolicies(generator *securityv1.NetworkPolicyGener
 		calicoPolicy.Spec.Egress = append(calicoPolicy.Spec.Egress, dnsEgressRuleCalico())
 	}
 
-	e.applyGlobalRules(policies, generator.Spec.GlobalRules)
+	e.applyGlobalRules(policies, generator)
 	e.applyCIDRRules(policies, generator.Spec.CIDRRules)
 
 	return policies, nil
@@ -124,27 +124,33 @@ func (e *CalicoEngine) generateAllowPolicies(basePolicy *CalicoNetworkPolicy, ge
 	return policies
 }
 
-// applyGlobalRules adds global rules to all Calico policies
-func (e *CalicoEngine) applyGlobalRules(policies []runtime.Object, globalRules []securityv1.GlobalRule) {
-	if globalRules == nil {
-		return
-	}
-
+// applyGlobalRules adds global rules to all Calico policies. Anywhere leaves
+// the peer side unselected, which Calico reads as any source or destination.
+func (e *CalicoEngine) applyGlobalRules(policies []runtime.Object, generator *securityv1.NetworkPolicyGenerator) {
 	for _, obj := range policies {
 		calicoPolicy := obj.(*CalicoNetworkPolicy)
-		for _, rule := range globalRules {
-			port := calicoGlobalRulePort(rule)
+		for _, rule := range generator.Spec.GlobalRules {
 			calicoRule := CalicoRule{
 				Action:   CalicoActionAllow,
 				Protocol: rule.Protocol,
 			}
+			ports := []interface{}{calicoGlobalRulePort(rule)}
+			var peer *CalicoEntityRule
+			if scope := resolveScope(rule, generator, calicoPolicy.Namespace); !scope.anywhere {
+				peer = &CalicoEntityRule{NamespaceSelector: buildCalicoNamespaceSelector(scope.namespaces)}
+			}
 
 			switch rule.Direction {
 			case DirectionIngress:
-				calicoRule.Destination = &CalicoEntityRule{Ports: []interface{}{port}}
+				calicoRule.Source = peer
+				calicoRule.Destination = &CalicoEntityRule{Ports: ports}
 				calicoPolicy.Spec.Ingress = append(calicoPolicy.Spec.Ingress, calicoRule)
 			case DirectionEgress:
-				calicoRule.Destination = &CalicoEntityRule{Ports: []interface{}{port}}
+				dest := &CalicoEntityRule{Ports: ports}
+				if peer != nil {
+					dest.NamespaceSelector = peer.NamespaceSelector
+				}
+				calicoRule.Destination = dest
 				calicoPolicy.Spec.Egress = append(calicoPolicy.Spec.Egress, calicoRule)
 			}
 		}

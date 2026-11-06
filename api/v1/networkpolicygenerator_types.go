@@ -122,6 +122,16 @@ type GlobalRule struct {
 	// Direction of the traffic (ingress/egress)
 	// +kubebuilder:validation:Enum=ingress;egress
 	Direction string `json:"direction"`
+
+	// From limits the peers the rule admits (ingress) or reaches (egress).
+	// "anywhere" matches every source or destination, inside the cluster or
+	// not. "allowedNamespaces" matches pods in spec.policy.allowedNamespaces,
+	// or only the policy's own namespace when that list is empty.
+	// "sameNamespace" matches pods in the policy's own namespace.
+	// +kubebuilder:validation:Enum=anywhere;allowedNamespaces;sameNamespace
+	// +kubebuilder:default=anywhere
+	// +optional
+	From string `json:"from,omitempty"`
 }
 
 // CIDRRule defines a CIDR-based traffic rule for external IP ranges
